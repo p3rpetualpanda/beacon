@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 
 import pytest
+import yaml
 
 from beacon.ingest.fetch import (
     ChecksumError,
@@ -142,3 +143,35 @@ def test_project_manifest_is_valid_and_pinned() -> None:
         assert dataset.url.startswith("https://")
         # Pinned to a 40-character commit SHA, never a moving branch like "master".
         assert re.search(r"/[0-9a-f]{40}/", dataset.url), dataset.name
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("format", "csv", "format must be one of"),
+        ("attack_techniques", ["T12"], "attack_techniques must look like"),
+    ],
+)
+def test_manifest_rejects_bad_metadata(
+    tmp_path: Path, field: str, value: object, message: str
+) -> None:
+    entry = {
+        "name": "x",
+        "url": "https://example.com/x.zip",
+        "path": "x.zip",
+        "sha256": "a" * 64,
+        "size_bytes": 1,
+        "licence": "MIT",
+        "source": "test",
+        field: value,
+    }
+    manifest = tmp_path / "m.yml"
+    manifest.write_text(yaml.safe_dump({"datasets": [entry]}))
+    with pytest.raises(ManifestError, match=message):
+        load_manifest(manifest)
+
+
+def test_repo_manifest_has_formats_and_techniques() -> None:
+    datasets = load_manifest(REPO_ROOT / "data" / "manifest.yml")
+    assert {d.format for d in datasets} == {"otrf_windows", "zeek"}
+    assert all(d.attack_techniques for d in datasets)

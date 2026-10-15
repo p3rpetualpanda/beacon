@@ -2,7 +2,8 @@
 
 Beacon never commits the datasets it analyses. `make data` downloads each file listed in
 [`manifest.yml`](manifest.yml) into `data/raw/` and refuses any file whose SHA-256 does not
-match the manifest.
+match the manifest. The only data in the repository is a few hundred sample records in
+[`tests/data/`](../tests/data/README.md), so CI can test the parsers.
 
 ## Sources
 

@@ -20,6 +20,8 @@ import yaml
 
 CHUNK_SIZE = 1 << 20
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+TECHNIQUE_RE = re.compile(r"^T\d{4}(\.\d{3})?$")
+FORMATS = ("otrf_windows", "zeek", "linux_auth")
 
 Opener = Callable[..., IO[bytes]]
 FetchStatus = Literal["downloaded", "cached"]
@@ -43,6 +45,8 @@ class Dataset:
     licence: str
     source: str
     description: str = ""
+    format: str = "otrf_windows"  # otrf_windows | zeek | linux_auth
+    attack_techniques: tuple[str, ...] = ()
 
 
 def load_manifest(manifest_path: Path) -> list[Dataset]:
@@ -56,6 +60,8 @@ def load_manifest(manifest_path: Path) -> list[Dataset]:
     for index, entry in enumerate(raw["datasets"]):
         if not isinstance(entry, dict):
             raise ManifestError(f"entry {index}: expected a mapping")
+        if isinstance(entry.get("attack_techniques"), list):
+            entry = {**entry, "attack_techniques": tuple(entry["attack_techniques"])}
         try:
             dataset = Dataset(**entry)
         except TypeError as exc:
@@ -74,6 +80,10 @@ def _validate(dataset: Dataset, seen: set[str]) -> None:
         raise ManifestError(f"{where}: sha256 must be 64 lowercase hex characters")
     if not isinstance(dataset.size_bytes, int) or dataset.size_bytes <= 0:
         raise ManifestError(f"{where}: size_bytes must be a positive integer")
+    if dataset.format not in FORMATS:
+        raise ManifestError(f"{where}: format must be one of {', '.join(FORMATS)}")
+    if not all(TECHNIQUE_RE.fullmatch(t) for t in dataset.attack_techniques):
+        raise ManifestError(f"{where}: attack_techniques must look like T1234 or T1234.001")
     relative = Path(dataset.path)
     if relative.is_absolute() or ".." in relative.parts:
         raise ManifestError(f"{where}: path must be relative and stay inside the data directory")

@@ -1,0 +1,8 @@
+Dec 31 23:59:58 bastion sshd[1201]: Failed password for root from 203.0.113.9 port 50122 ssh2
+Dec 31 23:59:59 bastion sshd[1201]: Failed password for invalid user admin from 203.0.113.9 port 50124 ssh2
+Jan  1 00:00:01 bastion sshd[1203]: Invalid user oracle from 203.0.113.9 port 50126
+Jan  1 00:00:05 bastion sshd[1204]: Accepted publickey for jake from 198.51.100.7 port 61000 ssh2: ED25519 SHA256:abc
+Jan  1 00:00:05 bastion sshd[1204]: pam_unix(sshd:session): session opened for user jake(uid=1000) by (uid=0)
+Jan  1 00:00:06 bastion CRON[1300]: pam_unix(cron:session): session opened for user root(uid=0) by (uid=0)
+2026-06-01T09:15:00.250000+01:00 Bastion sshd[2001]: Accepted password for Deploy from 2001:db8::5 port 40000 ssh2
+2026-06-01T09:15:00.250000+01:00 Bastion sshd[2001]: Accepted password for Deploy from 2001:db8::5 port 40000 ssh2
