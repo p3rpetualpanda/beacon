@@ -1,0 +1,103 @@
+# Public datasets Beacon downloads. Run `make data` (or `beacon data fetch`).
+# Files land in data/raw/<path> and are verified against sha256 before use.
+# OTRF files are pinned to one commit so the data never changes underneath the project.
+
+datasets:
+  - name: apt29_day1_host
+    description: "APT29 ATT&CK evaluation, day 1: Windows host logs (Sysmon, Security, PowerShell)"
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/compound/apt29/day1/apt29_evals_day1_manual.zip
+    path: otrf/apt29/day1_host.zip
+    sha256: 98a073140860560d70080ace9142961be4f64b4862bae892d62d0f254d0fdbe5
+    size_bytes: 13944973
+    licence: MIT
+    source: OTRF Security-Datasets
+
+  - name: apt29_day2_host
+    description: "APT29 ATT&CK evaluation, day 2: Windows host logs"
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/compound/apt29/day2/apt29_evals_day2_manual.zip
+    path: otrf/apt29/day2_host.zip
+    sha256: 377f8cba5db95a453a3ee8bd19f493efafc23724541482a4da99da28ee4665f9
+    size_bytes: 43033041
+    licence: MIT
+    source: OTRF Security-Datasets
+
+  - name: apt29_day1_zeek
+    description: "APT29 ATT&CK evaluation, day 1: Zeek network logs (all hosts combined)"
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/compound/apt29/day1/zeek/combined_zeek.log
+    path: otrf/apt29/day1_zeek.log
+    sha256: 2b3268dd04f54e0bc3d6b11fdec85e821a0be7b4754b71d7fd7c9595a7d235d1
+    size_bytes: 1243861
+    licence: MIT
+    source: OTRF Security-Datasets
+
+  - name: apt29_day2_zeek
+    description: "APT29 ATT&CK evaluation, day 2: Zeek network logs (all hosts combined)"
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/compound/apt29/day2/zeek/combined_zeek.log
+    path: otrf/apt29/day2_zeek.log
+    sha256: 218a40ec39926efd4e2cb482f9bdb699f9ff92cdecbb85c6e8c6fd53ea1652ec
+    size_bytes: 1542562
+    licence: MIT
+    source: OTRF Security-Datasets
+
+  - name: dcsync_empire
+    description: "DCSync with Empire (T1003.006)"
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/credential_access/host/empire_dcsync_dcerpc_drsuapi_DsGetNCChanges.zip
+    path: otrf/atomic/dcsync_empire.zip
+    sha256: fe1fcc96c0ff0cbae8fd4ffaadf85f51e28475441774f6fda3d963d4e2962800
+    size_bytes: 655112
+    licence: MIT
+    source: OTRF Security-Datasets
+
+  - name: lsass_dump_comsvcs
+    description: "LSASS memory dump via comsvcs.dll (T1003.001)"
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/credential_access/host/psh_lsass_memory_dump_comsvcs.zip
+    path: otrf/atomic/lsass_dump_comsvcs.zip
+    sha256: 0af9e920220d746432f0972be83ad057629695540aecd68c15869d190786e1ae
+    size_bytes: 17957
+    licence: MIT
+    source: OTRF Security-Datasets
+
+  - name: psexec_empire
+    description: "PsExec-style lateral movement with Empire (T1021.002)"
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/lateral_movement/host/empire_psexec_dcerpc_tcp_svcctl.zip
+    path: otrf/atomic/psexec_empire.zip
+    sha256: 8f40e7fc86bbbf31ebd50b3ba537cf0f4378392ae3e74de84bee00aeb0de1fa5
+    size_bytes: 656179
+    licence: MIT
+    source: OTRF Security-Datasets
+
+  - name: wmi_exec_empire
+    description: "Remote WMI execution with Empire (T1047)"
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/lateral_movement/host/empire_wmi_dcerpc_wmi_IWbemServices_ExecMethod.zip
+    path: otrf/atomic/wmi_exec_empire.zip
+    sha256: 96f1dbd9c5b077c8951b6e1f43b7fe01a2620c649889262481f15139a1746d88
+    size_bytes: 675407
+    licence: MIT
+    source: OTRF Security-Datasets
+
+  - name: schtasks_empire
+    description: "Scheduled task creation with Empire (T1053.005)"
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/persistence/host/empire_schtasks_creation_standard_user.zip
+    path: otrf/atomic/schtasks_empire.zip
+    sha256: b073a18420c90394cd2b6ad7589c78d90eba32dc155ed04b12ac824a8fc591b4
+    size_bytes: 263732
+    licence: MIT
+    source: OTRF Security-Datasets
+
+  - name: run_keys_empire
+    description: "Registry Run key persistence with Empire (T1547.001)"
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/persistence/host/empire_persistence_registry_modification_run_keys_standard_user.zip
+    path: otrf/atomic/run_keys_empire.zip
+    sha256: 2965f791bcaf5e6ccfc4059985e81fd7e67ec87f17855b6c383edd1b03a19c36
+    size_bytes: 3550216
+    licence: MIT
+    source: OTRF Security-Datasets
+
+  - name: net_localgroup_admins
+    description: "Local administrators group discovery (T1069.001)"
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/discovery/host/empire_shell_net_localgroup_administrators.zip
+    path: otrf/atomic/net_localgroup_admins.zip
+    sha256: 7331af9e09f7cb457e7b5a44494e4b2612a810ae50254c6a2d996914d66fe663
+    size_bytes: 107970
+    licence: MIT
+    source: OTRF Security-Datasets
