@@ -1,4 +1,4 @@
-.PHONY: install lint typecheck security test check data clean
+.PHONY: install lint typecheck security test check data load quality clean
 
 install:
 	uv sync
@@ -21,6 +21,12 @@ check: lint typecheck security test
 
 data:
 	uv run beacon data fetch
+
+load: data
+	uv run beacon load
+
+quality:
+	uv run pytest tests/test_full_load_quality.py --no-cov -v
 
 clean:
 	rm -rf .pytest_cache .mypy_cache .ruff_cache .coverage htmlcov

@@ -100,3 +100,84 @@ def test_fetch_returns_failure_on_checksum_error(
     code = cli.main(["data", "fetch", "--manifest", str(manifest), "--raw-dir", str(tmp_path)])
     assert code == 1
     assert "FAILED" in capsys.readouterr().err
+
+
+LOAD_MANIFEST = """datasets:
+  - name: lsass
+    url: https://example.com/lsass.zip
+    path: otrf/lsass.zip
+    sha256: {sha}
+    size_bytes: 1
+    licence: MIT
+    source: test
+    attack_techniques: [T1003.001]
+  - name: zeek
+    url: https://example.com/zeek.log
+    path: otrf/zeek.log
+    sha256: {sha}
+    size_bytes: 1
+    licence: MIT
+    source: test
+    format: zeek
+""".format(sha="a" * 64)
+
+
+@pytest.fixture
+def load_env(tmp_path: Path) -> dict[str, Path]:
+    from tests.conftest import LSASS_SAMPLE, zip_json
+
+    manifest = tmp_path / "manifest.yml"
+    manifest.write_text(LOAD_MANIFEST, encoding="utf-8")
+    raw = tmp_path / "raw"
+    zip_json(LSASS_SAMPLE, raw / "otrf" / "lsass.zip")
+    (raw / "otrf" / "zeek.log").write_text("")
+    return {"manifest": manifest, "raw": raw, "db": tmp_path / "beacon.duckdb", "tmp": tmp_path}
+
+
+def _load_args(env: dict[str, Path], *extra: str) -> list[str]:
+    return [
+        "load",
+        "--db",
+        str(env["db"]),
+        "--manifest",
+        str(env["manifest"]),
+        "--raw-dir",
+        str(env["raw"]),
+        "--interim-dir",
+        str(env["tmp"] / "interim"),
+        *extra,
+    ]
+
+
+def test_load_command(load_env: dict[str, Path], capsys: pytest.CaptureFixture[str]) -> None:
+    assert cli.main(_load_args(load_env)) == 0
+    out = capsys.readouterr().out
+    assert "lsass  175 events (9 duplicates, 0 rejected, local time +16h)" in out
+    assert "skipped     zeek" in out
+    assert "175 events loaded" in out
+
+
+def test_load_unknown_dataset(
+    load_env: dict[str, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert cli.main(_load_args(load_env, "--only", "nope")) == 2
+    assert "unknown dataset(s): nope" in capsys.readouterr().err
+
+
+def test_load_missing_download(
+    load_env: dict[str, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    (load_env["raw"] / "otrf" / "lsass.zip").unlink()
+    assert cli.main(_load_args(load_env, "--only", "lsass")) == 1
+    assert "beacon data fetch" in capsys.readouterr().err
+
+
+def test_load_auth_log_command(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    from tests.conftest import AUTH_SAMPLE
+
+    db_path = str(tmp_path / "b.duckdb")
+    args = ["load-auth-log", str(AUTH_SAMPLE), "--db", db_path, "--year", "2025"]
+    assert cli.main([*args, "--tz", "Europe/London"]) == 0
+    assert "linux_auth  5 events (1 duplicates" in capsys.readouterr().out
+    assert cli.main([*args, "--tz", "Mars/Olympus"]) == 2
+    assert "unknown time zone" in capsys.readouterr().err

@@ -11,6 +11,8 @@ datasets:
     size_bytes: 13944973
     licence: MIT
     source: OTRF Security-Datasets
+    format: otrf_windows
+    attack_techniques: [T1204.002, T1036.002, T1059.001, T1071.001, T1113, T1560.001, T1003.001, T1548.002, T1082, T1057]
 
   - name: apt29_day2_host
     description: "APT29 ATT&CK evaluation, day 2: Windows host logs"
@@ -20,6 +22,8 @@ datasets:
     size_bytes: 43033041
     licence: MIT
     source: OTRF Security-Datasets
+    format: otrf_windows
+    attack_techniques: [T1204.002, T1059.001, T1021.006, T1003.001, T1550.003, T1047, T1053.005, T1070.004, T1546.003, T1558.001]
 
   - name: apt29_day1_zeek
     description: "APT29 ATT&CK evaluation, day 1: Zeek network logs (all hosts combined)"
@@ -29,6 +33,8 @@ datasets:
     size_bytes: 1243861
     licence: MIT
     source: OTRF Security-Datasets
+    format: zeek
+    attack_techniques: [T1071.001, T1041]
 
   - name: apt29_day2_zeek
     description: "APT29 ATT&CK evaluation, day 2: Zeek network logs (all hosts combined)"
@@ -38,6 +44,8 @@ datasets:
     size_bytes: 1542562
     licence: MIT
     source: OTRF Security-Datasets
+    format: zeek
+    attack_techniques: [T1071.001, T1021.006]
 
   - name: dcsync_empire
     description: "DCSync with Empire (T1003.006)"
@@ -47,6 +55,8 @@ datasets:
     size_bytes: 655112
     licence: MIT
     source: OTRF Security-Datasets
+    format: otrf_windows
+    attack_techniques: [T1003.006]
 
   - name: lsass_dump_comsvcs
     description: "LSASS memory dump via comsvcs.dll (T1003.001)"
@@ -56,6 +66,8 @@ datasets:
     size_bytes: 17957
     licence: MIT
     source: OTRF Security-Datasets
+    format: otrf_windows
+    attack_techniques: [T1003.001]
 
   - name: psexec_empire
     description: "PsExec-style lateral movement with Empire (T1021.002)"
@@ -65,6 +77,8 @@ datasets:
     size_bytes: 656179
     licence: MIT
     source: OTRF Security-Datasets
+    format: otrf_windows
+    attack_techniques: [T1021.002, T1569.002]
 
   - name: wmi_exec_empire
     description: "Remote WMI execution with Empire (T1047)"
@@ -74,6 +88,8 @@ datasets:
     size_bytes: 675407
     licence: MIT
     source: OTRF Security-Datasets
+    format: otrf_windows
+    attack_techniques: [T1047]
 
   - name: schtasks_empire
     description: "Scheduled task creation with Empire (T1053.005)"
@@ -83,6 +99,8 @@ datasets:
     size_bytes: 263732
     licence: MIT
     source: OTRF Security-Datasets
+    format: otrf_windows
+    attack_techniques: [T1053.005]
 
   - name: run_keys_empire
     description: "Registry Run key persistence with Empire (T1547.001)"
@@ -92,6 +110,8 @@ datasets:
     size_bytes: 3550216
     licence: MIT
     source: OTRF Security-Datasets
+    format: otrf_windows
+    attack_techniques: [T1547.001]
 
   - name: net_localgroup_admins
     description: "Local administrators group discovery (T1069.001)"
@@ -101,3 +121,5 @@ datasets:
     size_bytes: 107970
     licence: MIT
     source: OTRF Security-Datasets
+    format: otrf_windows
+    attack_techniques: [T1069.001]
