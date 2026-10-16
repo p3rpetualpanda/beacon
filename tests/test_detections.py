@@ -62,8 +62,14 @@ def test_rerun_keeps_alert_status(con: duckdb.DuckDBPyConnection) -> None:
     assert run_rule(con, rule) == 1
     assert con.execute("SELECT status FROM alerts").fetchall() == [("true_positive",)]
 
+    # A triaged alert survives even when the rule stops producing it; a new one is removed.
+    con.execute(
+        "INSERT INTO alerts (alert_id, rule_id, ts, summary, event_ids) "
+        "VALUES ('stale', 'R03', now(), 'old', ['x'])"
+    )
     con.execute("DELETE FROM events")
     assert run_rule(con, rule) == 0
+    assert con.execute("SELECT status FROM alerts").fetchall() == [("true_positive",)]
 
 
 def test_precision_counts_hits_in_datasets_with_the_technique(
@@ -77,13 +83,18 @@ def test_precision_counts_hits_in_datasets_with_the_technique(
     )
     con.execute(
         "INSERT INTO datasets (name, attack_techniques) VALUES "
-        "('fixture', ['T1003']), ('other', ['T1059.001'])"
+        "('fixture', ['T1003']), ('other', ['T1059.001']), ('unlabelled', [])"
+    )
+    con.execute(
+        "INSERT INTO events BY NAME SELECT * REPLACE ('unlabelled' AS dataset, 'e3' AS event_id) "
+        "FROM events WHERE dataset = 'fixture'"
     )
     run_rule(con, rule)
     row = con.execute(
         "SELECT hits, true_positives, precision FROM rule_performance WHERE rule_id = 'R03'"
     ).fetchone()
-    assert row == (2, 1, 0.5)
+    # The unlabelled dataset's hit counts as a hit but is left out of precision.
+    assert row == (3, 1, 0.5)
 
 
 @pytest.mark.parametrize(
@@ -116,3 +127,5 @@ def test_detect_command(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> N
     out = capsys.readouterr().out
     assert "R03  LSASS memory access" in out and "1 alerts" in out
     assert cli.main(["detect", "--db", str(db_path), "--only", "R77"]) == 2
+    missing = str(tmp_path / "nowhere")
+    assert cli.main(["detect", "--db", str(db_path), "--rules-dir", missing]) == 2

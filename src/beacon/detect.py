@@ -70,9 +70,10 @@ def _load_rule(folder: Path) -> Rule:
 
 
 def run_rule(con: duckdb.DuckDBPyConnection, rule: Rule) -> int:
-    """Run one rule in a transaction and return how many alerts it has now.
+    """Run one rule in a transaction and return how many alerts it produces now.
 
-    Alerts the rule still produces keep their status; ones it no longer produces are removed.
+    Alerts it still produces keep their status. Alerts it no longer produces are removed while
+    still 'new'; ones an analyst has triaged are kept, so re-running never loses a verdict.
     """
     con.execute("BEGIN TRANSACTION")
     try:
@@ -89,7 +90,7 @@ def run_rule(con: duckdb.DuckDBPyConnection, rule: Rule) -> int:
             {"rule_id": rule.rule_id},
         )
         con.execute(
-            "DELETE FROM alerts WHERE rule_id = ? "
+            "DELETE FROM alerts WHERE rule_id = ? AND status = 'new' "
             "AND alert_id NOT IN (SELECT alert_id FROM rule_hits)",
             [rule.rule_id],
         )
@@ -97,10 +98,8 @@ def run_rule(con: duckdb.DuckDBPyConnection, rule: Rule) -> int:
             "INSERT OR IGNORE INTO alerts BY NAME "
             "SELECT DISTINCT ON (alert_id) * FROM rule_hits ORDER BY alert_id, ts"
         )
+        (count,) = con.execute("SELECT count(DISTINCT alert_id) FROM rule_hits").fetchone() or (0,)
         con.execute("DROP TABLE rule_hits")
-        (count,) = con.execute(
-            "SELECT count(*) FROM alerts WHERE rule_id = ?", [rule.rule_id]
-        ).fetchone() or (0,)
         con.execute("COMMIT")
     except Exception:
         con.execute("ROLLBACK")

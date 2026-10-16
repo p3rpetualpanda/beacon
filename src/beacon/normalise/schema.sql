@@ -98,6 +98,8 @@ CREATE TABLE IF NOT EXISTS alerts (
 
 -- Hits and precision per rule. With no per-event attack labels, a hit counts as a true positive
 -- when its dataset is documented to contain the rule's technique, its parent or a sub-technique.
+-- Hits in datasets with no documented techniques (e.g. a local auth.log) are left out of
+-- precision rather than counted as false positives.
 CREATE OR REPLACE VIEW rule_performance AS
 SELECT
     r.rule_id,
@@ -106,17 +108,17 @@ SELECT
     r.severity,
     count(a.alert_id)                          AS hits,
     count(a.alert_id) FILTER (WHERE a.matched) AS true_positives,
-    true_positives / nullif(hits, 0)           AS precision
+    true_positives / nullif(count(a.matched), 0) AS precision
 FROM rules r
 LEFT JOIN (
     SELECT
         a.alert_id,
         a.rule_id,
-        len(list_filter(
-            coalesce(d.attack_techniques, []),
+        CASE WHEN len(d.attack_techniques) > 0 THEN len(list_filter(
+            d.attack_techniques,
             t -> t = r.technique OR starts_with(t, r.technique || '.')
                  OR starts_with(r.technique, t || '.')
-        )) > 0 AS matched
+        )) > 0 END AS matched
     FROM alerts a
     JOIN rules r USING (rule_id)
     LEFT JOIN datasets d ON d.name = a.dataset

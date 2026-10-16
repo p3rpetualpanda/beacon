@@ -136,7 +136,11 @@ def _load(
 
 
 def _detect(db_path: Path, rules_dir: Path, only: list[str] | None) -> int:
-    rules = detect_mod.load_rules(rules_dir)
+    try:
+        rules = detect_mod.load_rules(rules_dir)
+    except (detect_mod.RuleError, OSError) as exc:
+        print(f"cannot load rules: {exc}", file=sys.stderr)
+        return 2
     unknown = set(only or ()) - {r.rule_id for r in rules}
     if unknown:
         print(f"unknown rule(s): {', '.join(sorted(unknown))}", file=sys.stderr)
