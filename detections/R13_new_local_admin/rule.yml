@@ -1,0 +1,8 @@
+id: R13
+name: New local admin
+technique: T1136.001
+tactic: Persistence
+severity: high
+description: >-
+  An account is created (Security 4720) and added to the Administrators group (Security 4732)
+  on the same host within an hour.

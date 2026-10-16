@@ -47,17 +47,6 @@ datasets:
     format: zeek
     attack_techniques: [T1071.001, T1021.006]
 
-  - name: dcsync_empire
-    description: "DCSync with Empire (T1003.006)"
-    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/credential_access/host/empire_dcsync_dcerpc_drsuapi_DsGetNCChanges.zip
-    path: otrf/atomic/dcsync_empire.zip
-    sha256: fe1fcc96c0ff0cbae8fd4ffaadf85f51e28475441774f6fda3d963d4e2962800
-    size_bytes: 655112
-    licence: MIT
-    source: OTRF Security-Datasets
-    format: otrf_windows
-    attack_techniques: [T1003.006]
-
   - name: lsass_dump_comsvcs
     description: "LSASS memory dump via comsvcs.dll (T1003.001)"
     url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/credential_access/host/psh_lsass_memory_dump_comsvcs.zip
@@ -112,14 +101,3 @@ datasets:
     source: OTRF Security-Datasets
     format: otrf_windows
     attack_techniques: [T1547.001]
-
-  - name: net_localgroup_admins
-    description: "Local administrators group discovery (T1069.001)"
-    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/discovery/host/empire_shell_net_localgroup_administrators.zip
-    path: otrf/atomic/net_localgroup_admins.zip
-    sha256: 7331af9e09f7cb457e7b5a44494e4b2612a810ae50254c6a2d996914d66fe663
-    size_bytes: 107970
-    licence: MIT
-    source: OTRF Security-Datasets
-    format: otrf_windows
-    attack_techniques: [T1069.001]

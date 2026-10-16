@@ -1,0 +1,8 @@
+id: R06
+name: Office app spawns a shell
+technique: T1204.002
+tactic: Execution
+severity: high
+description: >-
+  Word, Excel, PowerPoint or Outlook starts a command shell or script host, as a malicious
+  document's macro does.

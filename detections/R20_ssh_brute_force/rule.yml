@@ -1,0 +1,6 @@
+id: R20
+name: SSH brute force (Linux)
+technique: T1110.001
+tactic: Credential Access
+severity: medium
+description: 10 or more failed SSH logins from one IP within 10 minutes (Linux auth.log).

@@ -71,3 +71,57 @@ CREATE TABLE IF NOT EXISTS event_code_map (
     outcome     VARCHAR,
     PRIMARY KEY (source, event_code)
 );
+
+-- Detection rules, loaded from detections/*/rule.yml by `beacon detect`.
+CREATE TABLE IF NOT EXISTS rules (
+    rule_id      VARCHAR PRIMARY KEY,  -- R01, R02, ...
+    name         VARCHAR NOT NULL,
+    technique    VARCHAR NOT NULL,     -- ATT&CK technique, e.g. T1003.001
+    tactic       VARCHAR NOT NULL,
+    severity     VARCHAR NOT NULL,     -- low | medium | high | critical
+    description  VARCHAR
+);
+
+-- One row per rule hit. Re-running a rule keeps existing alerts (and their status).
+CREATE TABLE IF NOT EXISTS alerts (
+    alert_id    VARCHAR PRIMARY KEY,   -- hash of the rule and its evidence, so re-runs match
+    rule_id     VARCHAR NOT NULL,
+    ts          TIMESTAMP NOT NULL,    -- when the behaviour completed
+    dataset     VARCHAR,
+    host_name   VARCHAR,
+    user_name   VARCHAR,
+    summary     VARCHAR NOT NULL,
+    event_ids   VARCHAR[] NOT NULL,    -- evidence in events
+    status      VARCHAR NOT NULL DEFAULT 'new',  -- new | triaged | true_positive | false_positive | closed
+    created_at  TIMESTAMP NOT NULL DEFAULT current_timestamp
+);
+
+-- Hits and precision per rule. With no per-event attack labels, a hit counts as a true positive
+-- when its dataset is documented to contain the rule's technique, its parent or a sub-technique.
+-- Hits in datasets with no documented techniques (e.g. a local auth.log) are left out of
+-- precision rather than counted as false positives.
+CREATE OR REPLACE VIEW rule_performance AS
+SELECT
+    r.rule_id,
+    r.name,
+    r.technique,
+    r.severity,
+    count(a.alert_id)                          AS hits,
+    count(a.alert_id) FILTER (WHERE a.matched) AS true_positives,
+    true_positives / nullif(count(a.matched), 0) AS precision
+FROM rules r
+LEFT JOIN (
+    SELECT
+        a.alert_id,
+        a.rule_id,
+        CASE WHEN len(d.attack_techniques) > 0 THEN len(list_filter(
+            d.attack_techniques,
+            t -> t = r.technique OR starts_with(t, r.technique || '.')
+                 OR starts_with(r.technique, t || '.')
+        )) > 0 END AS matched
+    FROM alerts a
+    JOIN rules r USING (rule_id)
+    LEFT JOIN datasets d ON d.name = a.dataset
+) a USING (rule_id)
+GROUP BY ALL
+ORDER BY r.rule_id;

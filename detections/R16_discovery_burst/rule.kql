@@ -1,0 +1,13 @@
+// R16: one user runs 5+ different discovery commands on one host within 5 minutes.
+SecurityEvent
+| where EventID == 4688
+| extend Exe = tolower(tostring(split(NewProcessName, @"\")[-1]))
+| where Exe in ("whoami.exe", "net.exe", "net1.exe", "nltest.exe", "systeminfo.exe",
+                "ipconfig.exe", "tasklist.exe", "hostname.exe", "quser.exe", "qwinsta.exe",
+                "netstat.exe", "arp.exe", "route.exe", "dsquery.exe")
+| extend Command = iff(Exe in ("net.exe", "net1.exe"),
+    strcat("net ", extract(@"(?i)\s(user|group|localgroup|accounts|view|share|session|use|config)\b", 1, CommandLine)),
+    Exe)
+| summarize Commands = dcount(Command), CommandList = make_set(Command)
+    by Computer, Account, bin(TimeGenerated, 5m)
+| where Commands >= 5

@@ -1,0 +1,11 @@
+// R13: an account is created and added to Administrators on the same host within an hour.
+SecurityEvent
+| where EventID == 4720
+| project CreatedTime = TimeGenerated, Computer, NewAccount = TargetAccount, NewSid = TargetSid
+| join kind=inner (
+    SecurityEvent
+    | where EventID == 4732 and TargetSid == "S-1-5-32-544"
+    | project AddedTime = TimeGenerated, Computer, MemberSid
+  ) on Computer, $left.NewSid == $right.MemberSid
+| where AddedTime between (CreatedTime .. CreatedTime + 1h)
+| project AddedTime, Computer, NewAccount

@@ -1,0 +1,9 @@
+// R08: a new service whose binary is in a user-writable folder.
+union
+    (SecurityEvent | where EventID == 4697
+        | project TimeGenerated, Computer, ServiceName, ServiceFileName),
+    (Event | where Source == "Service Control Manager" and EventID == 7045
+        | extend ServiceName = tostring(parse_xml(EventData).DataItem.EventData.Data[0]["#text"]),
+                 ServiceFileName = tostring(parse_xml(EventData).DataItem.EventData.Data[1]["#text"])
+        | project TimeGenerated, Computer, ServiceName, ServiceFileName)
+| where ServiceFileName matches regex @'(?i)(\\users\\|\\temp\\|\\appdata\\|\\programdata\\|\\perflogs\\|%temp%|%appdata%|%localappdata%|%programdata%|%public%)'

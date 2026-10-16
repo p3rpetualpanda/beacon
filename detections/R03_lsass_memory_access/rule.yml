@@ -1,0 +1,8 @@
+id: R03
+name: LSASS memory access
+technique: T1003.001
+tactic: Credential Access
+severity: critical
+description: >-
+  A process other than Windows' own system processes opens lsass.exe with permission to
+  read its memory, which credential dumping needs.

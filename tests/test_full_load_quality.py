@@ -22,13 +22,11 @@ pytestmark = pytest.mark.skipif(not DB.exists(), reason=f"{DB} not built; run `m
 EXPECTED = {
     "apt29_day1_host": (196_081, date(2020, 5, 2)),
     "apt29_day2_host": (587_286, date(2020, 5, 2)),
-    "dcsync_empire": (8_465, date(2020, 9, 21)),
     "lsass_dump_comsvcs": (184, date(2020, 10, 18)),
     "psexec_empire": (4_348, date(2020, 9, 20)),
     "wmi_exec_empire": (6_383, date(2020, 9, 21)),
     "schtasks_empire": (1_297, date(2020, 9, 21)),
     "run_keys_empire": (40_569, date(2020, 9, 4)),
-    "net_localgroup_admins": (884, date(2020, 9, 21)),
 }
 
 

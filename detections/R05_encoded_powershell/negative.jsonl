@@ -1,0 +1,2 @@
+{"ts": "2020-05-02 10:00:00", "source": "sysmon", "event_code": "1", "host_name": "scranton", "user_name": "dschrute", "process_name": "powershell.exe", "process_command_line": "powershell.exe -ExecutionPolicy Bypass -File C:\\scripts\\backup.ps1"}
+{"ts": "2020-05-02 10:00:01", "source": "sysmon", "event_code": "1", "host_name": "scranton", "user_name": "dschrute", "process_name": "cmd.exe", "process_command_line": "cmd.exe /c echo -enc JABzAD0ATgBlAHcALQBPAGIAagBlAGMAdAA="}

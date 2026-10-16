@@ -1,0 +1,6 @@
+id: R02
+name: Password spraying
+technique: T1110.003
+tactic: Credential Access
+severity: high
+description: One source IP fails to log on as 15 or more different users within 10 minutes.

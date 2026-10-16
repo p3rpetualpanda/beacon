@@ -1,0 +1,8 @@
+id: R05
+name: Encoded PowerShell
+technique: T1059.001
+tactic: Execution
+severity: medium
+description: >-
+  powershell.exe or pwsh.exe is started with -EncodedCommand, or any short form of it, and
+  a base64 payload.

@@ -1,0 +1,7 @@
+// R20: 10+ failed SSH logins from one IP in 10 minutes (Syslog from sshd).
+Syslog
+| where ProcessName == "sshd" and SyslogMessage startswith "Failed "
+| extend SourceIP = extract(@"from (\S+)", 1, SyslogMessage)
+| summarize Failures = count(), FirstFail = min(TimeGenerated), LastFail = max(TimeGenerated)
+    by HostName, SourceIP, bin(TimeGenerated, 10m)
+| where Failures >= 10
