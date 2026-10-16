@@ -43,7 +43,15 @@ def test_rejects_archives_without_exactly_one_json(tmp_path: Path, names: list[s
         extract_json(archive, tmp_path / "a.json")
 
 
-@pytest.mark.parametrize("name", ["../evil.json", "/abs/evil.json", "dir\\evil.json"])
+@pytest.mark.parametrize(
+    "name",
+    [
+        "../evil.json",
+        "/abs/evil.json",
+        # zipfile turns \ into / on Windows, both writing and reading, so it can't occur there.
+        pytest.param("dir\\evil.json", marks=pytest.mark.skipif(os.name == "nt", reason="POSIX")),
+    ],
+)
 def test_rejects_unsafe_member_names(tmp_path: Path, name: str) -> None:
     archive = tmp_path / "a.zip"
     with zipfile.ZipFile(archive, "w") as zf:

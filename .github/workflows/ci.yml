@@ -10,7 +10,14 @@ permissions:
 
 jobs:
   checks:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        # bash on Windows too, so a failing first command in a step fails the step.
+        shell: bash
     steps:
       - uses: actions/checkout@v4
         with:
