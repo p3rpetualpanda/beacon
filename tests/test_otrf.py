@@ -120,3 +120,10 @@ def test_extract_tar_log_rejects_links(tmp_path: Path) -> None:
         tf.addfile(link)
     with pytest.raises(ArchiveError, match="one regular file"):
         extract_tar_log(archive, tmp_path / "a.log")
+
+
+def test_extract_tar_log_rejects_compression_bombs(tmp_path: Path) -> None:
+    archive = _tar(tmp_path / "a.tar.gz", {"SSH.log": b"0" * 5_000_000})
+    with pytest.raises(ArchiveError, match="suspicious ratio"):
+        extract_tar_log(archive, tmp_path / "a.log")
+    assert not (tmp_path / "a.log").exists()

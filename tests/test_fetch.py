@@ -134,6 +134,18 @@ def test_load_manifest_reads_entries(tmp_path: Path) -> None:
             "datasets:" + VALID_ENTRY.format(sha="a" * 64) + "    format: linux_auth\n",
             "syslog_year",
         ),
+        (
+            "datasets:"
+            + VALID_ENTRY.format(sha="a" * 64)
+            + "    format: linux_auth\n    syslog_year: true\n",
+            "syslog_year",
+        ),
+        (
+            "datasets:"
+            + VALID_ENTRY.format(sha="a" * 64)
+            + "    format: linux_auth\n    syslog_year: 99999\n",
+            "syslog_year",
+        ),
     ],
 )
 def test_load_manifest_rejects_bad_entries(tmp_path: Path, body: str, message: str) -> None:

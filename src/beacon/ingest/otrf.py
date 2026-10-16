@@ -70,6 +70,8 @@ def extract_tar_log(archive: Path, dest: Path) -> Path:
             raise ArchiveError(f"{archive}: unsafe member name {member.name!r}")
         if member.size > MAX_UNCOMPRESSED_BYTES:
             raise ArchiveError(f"{archive}: member {member.name!r} is too large")
+        if member.size / max(archive.stat().st_size, 1) > MAX_COMPRESSION_RATIO:
+            raise ArchiveError(f"{archive}: member {member.name!r} has a suspicious ratio")
 
         dest.parent.mkdir(parents=True, exist_ok=True)
         tmp = dest.with_suffix(dest.suffix + ".part")

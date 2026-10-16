@@ -213,9 +213,7 @@ def load_dataset(
     if dataset.format == "linux_auth" and dataset.syslog_year is not None:
         log = extract_tar_log(raw_dir / dataset.path, interim_dir / "auth" / f"{dataset.name}.log")
         # shortcut: the archive's time zone isn't recorded, so its syslog times are read as UTC.
-        result = load_auth_log(con, log, dataset=dataset.name, year=dataset.syslog_year)
-        upsert_dataset(con, dataset)  # replace the generic row load_auth_log writes
-        return result
+        return load_auth_log(con, log, dataset=dataset.name, year=dataset.syslog_year, meta=dataset)
     if dataset.format != "otrf_windows":
         return None
     archive = raw_dir / dataset.path
@@ -230,8 +228,12 @@ def load_auth_log(
     dataset: str,
     year: int,
     tz: tzinfo = UTC,
+    meta: Dataset | None = None,
 ) -> LoadResult:
-    """Parse a Linux auth.log and load its SSH events as source `linux_auth`."""
+    """Parse a Linux auth.log and load its SSH events as source `linux_auth`.
+
+    meta, when given (a manifest dataset), is recorded in `datasets` in the same transaction.
+    """
     with path.open(encoding="utf-8", errors="replace") as handle:
         lines = handle.readlines()
     parsed = list(linux_auth.parse_lines(lines, year=year, tz=tz))
@@ -265,10 +267,14 @@ def load_auth_log(
                 staged = Path(tmp) / "auth.jsonl"
                 staged.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
                 con.execute(
-                    "INSERT INTO auth_stage SELECT * FROM read_json(?, format = "
+                    # Numbers are read as text and try_cast, so one absurd port in a hostile
+                    # log line becomes NULL instead of aborting the whole load.
+                    "INSERT INTO auth_stage SELECT event_id, ts, event_code, host_name, "
+                    "try_cast(process_id AS BIGINT), user_name, src_ip, "
+                    "try_cast(src_port AS INTEGER), raw FROM read_json(?, format = "
                     "'newline_delimited', columns = {event_id: 'VARCHAR', ts: 'TIMESTAMP', "
-                    "event_code: 'VARCHAR', host_name: 'VARCHAR', process_id: 'BIGINT', "
-                    "user_name: 'VARCHAR', src_ip: 'VARCHAR', src_port: 'INTEGER', "
+                    "event_code: 'VARCHAR', host_name: 'VARCHAR', process_id: 'VARCHAR', "
+                    "user_name: 'VARCHAR', src_ip: 'VARCHAR', src_port: 'VARCHAR', "
                     "raw: 'VARCHAR'})",
                     [str(staged)],
                 )
@@ -296,17 +302,20 @@ def load_auth_log(
             ts_offset_hours=None,
         )
         record_quality(con, result)
-        _upsert_dataset_row(
-            con,
-            [
-                dataset,
-                f"SSH authentication events from {path.name}",
-                "Linux auth.log",
-                "own data",
-                "linux_auth",
-                [],
-            ],
-        )
+        if meta is not None:
+            upsert_dataset(con, meta)
+        else:
+            _upsert_dataset_row(
+                con,
+                [
+                    dataset,
+                    f"SSH authentication events from {path.name}",
+                    "Linux auth.log",
+                    "own data",
+                    "linux_auth",
+                    [],
+                ],
+            )
         con.execute("DROP TABLE auth_stage")
         con.execute("COMMIT")
     except Exception:
