@@ -85,9 +85,11 @@ def run_rule(con: duckdb.DuckDBPyConnection, rule: Rule) -> int:
         con.execute(
             "CREATE OR REPLACE TEMP TABLE rule_hits AS "  # noqa: S608  # nosec B608
             "SELECT md5($rule_id || list_sort(event_ids)::VARCHAR) AS alert_id, "
-            "$rule_id AS rule_id, ts, dataset, host_name, user_name, summary, event_ids "
+            "$rule_id AS rule_id, ts, dataset, host_name, user_name, "
+            # A NULL field inside printf() makes the whole summary NULL; fall back to the rule name.
+            "coalesce(summary, $rule_name) AS summary, event_ids "
             f"FROM ({rule.sql})",
-            {"rule_id": rule.rule_id},
+            {"rule_id": rule.rule_id, "rule_name": rule.name},
         )
         con.execute(
             "DELETE FROM alerts WHERE rule_id = ? AND status = 'new' "

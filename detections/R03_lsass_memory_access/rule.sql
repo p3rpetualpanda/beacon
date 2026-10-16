@@ -5,7 +5,8 @@ SELECT
     dataset,
     host_name,
     user_name,
-    printf('%s opened lsass.exe with access %s', process_name, granted_access) AS summary,
+    printf('%s opened lsass.exe with access %s', coalesce(process_name, 'An unknown process'),
+           granted_access) AS summary,
     [event_id] AS event_ids
 FROM events
 WHERE source = 'sysmon' AND event_code = '10'
@@ -14,12 +15,12 @@ WHERE source = 'sysmon' AND event_code = '10'
   -- Allow Windows' own processes only from their real folders, so a renamed tool such as
   -- C:\Users\Public\svchost.exe still alerts.
   AND NOT (
-      process_name IN ('csrss.exe', 'wininit.exe', 'services.exe', 'lsass.exe', 'lsm.exe',
+      coalesce(process_name, '') IN ('csrss.exe', 'wininit.exe', 'services.exe', 'lsass.exe', 'lsm.exe',
                        'svchost.exe', 'wmiprvse.exe')
-      AND regexp_matches(process_path, '(?i)^c:\\windows\\system32\\(wbem\\)?[^\\]+$')
+      AND regexp_matches(coalesce(process_path, ''), '(?i)^c:\\windows\\(system32|syswow64)\\(wbem\\)?[^\\]+$')
   )
   AND NOT (
-      process_name = 'msmpeng.exe'
-      AND regexp_matches(process_path,
+      coalesce(process_name, '') = 'msmpeng.exe'
+      AND regexp_matches(coalesce(process_path, ''),
                          '(?i)^c:\\(programdata\\microsoft|program files)\\windows defender\\')
   )

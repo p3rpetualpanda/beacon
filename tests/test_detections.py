@@ -44,7 +44,7 @@ def test_rule_is_quiet_on_negative_fixture(con: duckdb.DuckDBPyConnection, rule:
 
 # Positive fixtures that log one launch in both Sysmon and Security 4688 must alert once per
 # launch, and each extra case (renamed tool, quoted payload, task under Microsoft) must fire.
-@pytest.mark.parametrize(("rule_id", "alerts"), [("R03", 2), ("R05", 2), ("R06", 1), ("R07", 3)])
+@pytest.mark.parametrize(("rule_id", "alerts"), [("R03", 3), ("R05", 3), ("R06", 2), ("R07", 3)])
 def test_positive_fixture_alert_counts(
     con: duckdb.DuckDBPyConnection, rule_id: str, alerts: int
 ) -> None:
@@ -135,7 +135,7 @@ def test_detect_command(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> N
     con.close()
     assert cli.main(["detect", "--db", str(db_path), "--rules-dir", str(RULES_DIR)]) == 0
     out = capsys.readouterr().out
-    assert "R03  LSASS memory access" in out and "2 alerts" in out
+    assert "R03  LSASS memory access" in out and "3 alerts" in out
     assert cli.main(["detect", "--db", str(db_path), "--only", "R77"]) == 2
     missing = str(tmp_path / "nowhere")
     assert cli.main(["detect", "--db", str(db_path), "--rules-dir", missing]) == 2

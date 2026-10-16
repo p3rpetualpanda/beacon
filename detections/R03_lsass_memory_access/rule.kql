@@ -6,7 +6,7 @@ Sysmon
 | extend Process = tolower(tostring(split(SourceImage, @"\")[-1]))
 | where not(Process in ("csrss.exe", "wininit.exe", "services.exe", "lsass.exe", "lsm.exe",
                         "svchost.exe", "wmiprvse.exe")
-            and SourceImage matches regex @"(?i)^c:\\windows\\system32\\(wbem\\)?[^\\]+$")
+            and SourceImage matches regex @"(?i)^c:\\windows\\(system32|syswow64)\\(wbem\\)?[^\\]+$")
 | where not(Process == "msmpeng.exe"
             and SourceImage matches regex @"(?i)^c:\\(programdata\\microsoft|program files)\\windows defender\\")
 | project TimeGenerated, Computer, SourceUser, SourceImage, GrantedAccess

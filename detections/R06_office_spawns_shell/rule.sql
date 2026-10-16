@@ -11,7 +11,8 @@ FROM events
 WHERE ((source = 'sysmon' AND event_code = '1') OR (source = 'winsec' AND event_code = '4688'))
   AND parent_process_name IN ('winword.exe', 'excel.exe', 'powerpnt.exe', 'outlook.exe')
   AND process_name IN ('cmd.exe', 'powershell.exe', 'pwsh.exe', 'wscript.exe', 'cscript.exe', 'mshta.exe')
-  -- Tuned: when Sysmon and Security both log the same launch, keep only the Sysmon record.
+  -- Tuned: when Sysmon and Security both log the same launch and Sysmon's record matches
+  -- this rule too, keep only the Sysmon record.
   AND NOT (
       source = 'winsec' AND EXISTS (
           SELECT 1 FROM events s
@@ -19,5 +20,6 @@ WHERE ((source = 'sysmon' AND event_code = '1') OR (source = 'winsec' AND event_
             AND s.dataset = events.dataset AND s.host_name = events.host_name
             AND s.process_command_line = events.process_command_line
             AND s.ts BETWEEN events.ts - INTERVAL 5 SECOND AND events.ts + INTERVAL 5 SECOND
+            AND s.parent_process_name IN ('winword.exe', 'excel.exe', 'powerpnt.exe', 'outlook.exe') AND s.process_name IN ('cmd.exe', 'powershell.exe', 'pwsh.exe', 'wscript.exe', 'cscript.exe', 'mshta.exe')
       )
   )
