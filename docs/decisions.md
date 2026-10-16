@@ -30,9 +30,11 @@ written by hand and not run, because Beacon has no Sentinel workspace.
 
 ## 2026-10-16: Drop datasets that Windows Defender quarantines
 
-Defender flags `dcsync_empire` and `net_localgroup_admins` as malware, because they are real
-attack logs. Beacon no longer downloads them; rules they would have exercised are covered by
-test events instead.
+Defender flags `dcsync_empire`, `net_localgroup_admins` and `schtasks_empire` as malware,
+because they are real attack logs carrying Empire's encoded PowerShell payloads. Each dataset
+was loaded once on Windows with Defender on; the four that raised no detection are kept.
+Beacon no longer downloads the three flagged ones; rules they would have exercised are covered
+by test events and the APT29 data instead.
 
 **Why:** the project must run on a normal Windows PC without weakening its antivirus.
 

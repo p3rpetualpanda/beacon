@@ -80,17 +80,6 @@ datasets:
     format: otrf_windows
     attack_techniques: [T1047]
 
-  - name: schtasks_empire
-    description: "Scheduled task creation with Empire (T1053.005)"
-    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/persistence/host/empire_schtasks_creation_standard_user.zip
-    path: otrf/atomic/schtasks_empire.zip
-    sha256: b073a18420c90394cd2b6ad7589c78d90eba32dc155ed04b12ac824a8fc591b4
-    size_bytes: 263732
-    licence: MIT
-    source: OTRF Security-Datasets
-    format: otrf_windows
-    attack_techniques: [T1053.005]
-
   - name: run_keys_empire
     description: "Registry Run key persistence with Empire (T1547.001)"
     url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/persistence/host/empire_persistence_registry_modification_run_keys_standard_user.zip

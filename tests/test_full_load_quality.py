@@ -25,7 +25,6 @@ EXPECTED = {
     "lsass_dump_comsvcs": (184, date(2020, 10, 18)),
     "psexec_empire": (4_348, date(2020, 9, 20)),
     "wmi_exec_empire": (6_383, date(2020, 9, 21)),
-    "schtasks_empire": (1_297, date(2020, 9, 21)),
     "run_keys_empire": (40_569, date(2020, 9, 4)),
 }
 
