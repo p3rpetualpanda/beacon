@@ -167,12 +167,49 @@ def _upsert_dataset_row(con: duckdb.DuckDBPyConnection, row: list[object]) -> No
     con.execute("INSERT OR REPLACE INTO datasets VALUES (?, ?, ?, ?, ?, ?)", row)
 
 
+def load_zeek_json(con: duckdb.DuckDBPyConnection, dataset: Dataset, json_path: Path) -> LoadResult:
+    """Normalise one OTRF Zeek JSON-lines file (all log types combined) into `events`."""
+    con.execute("BEGIN TRANSACTION")
+    try:
+        con.execute(
+            "CREATE OR REPLACE TEMP TABLE raw_stage AS "
+            "SELECT json AS j FROM read_ndjson_objects(?, ignore_errors = true)",
+            [str(json_path)],
+        )
+        rows_read = _scalar(con, "SELECT count(*) FROM raw_stage")
+        con.execute("DELETE FROM events WHERE dataset = ?", [dataset.name])
+        con.execute(read_sql("zeek.sql"), {"dataset": dataset.name})
+        rows_rejected = _scalar(
+            con, "SELECT count(*) FROM stage_typed WHERE ts IS NULL OR stream IS NULL"
+        )
+        rows_loaded = _scalar(con, "SELECT count(*) FROM events WHERE dataset = ?", [dataset.name])
+        result = LoadResult(
+            dataset=dataset.name,
+            rows_read=rows_read,
+            rows_rejected=rows_rejected,
+            duplicates_dropped=rows_read - rows_rejected - rows_loaded,
+            rows_loaded=rows_loaded,
+            ts_offset_hours=None,
+        )
+        record_quality(con, result)
+        upsert_dataset(con, dataset)
+        con.execute("DROP TABLE IF EXISTS stage_typed")
+        con.execute("DROP TABLE IF EXISTS raw_stage")
+        con.execute("COMMIT")
+    except Exception:
+        con.execute("ROLLBACK")
+        raise
+    return result
+
+
 def load_dataset(
     con: duckdb.DuckDBPyConnection, dataset: Dataset, raw_dir: Path, interim_dir: Path
 ) -> LoadResult | None:
-    """Extract and load one manifest dataset. Returns None for formats not loaded yet."""
+    """Extract and load one manifest dataset. Returns None for formats not loaded this way."""
+    if dataset.format == "zeek":
+        return load_zeek_json(con, dataset, raw_dir / dataset.path)
     if dataset.format != "otrf_windows":
-        return None  # Zeek network logs are parsed in Phase 3.
+        return None
     archive = raw_dir / dataset.path
     json_path = extract_json(archive, interim_dir / "otrf" / f"{dataset.name}.json")
     return load_windows_json(con, dataset, json_path)

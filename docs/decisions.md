@@ -2,6 +2,22 @@
 
 Short records of design choices and why they were made, newest first.
 
+## 2026-10-16: Load the APT29 Zeek logs as their own records
+
+OTRF ships every Zeek log type for a day in one JSON file. Each record becomes one `events` row
+with source `zeek` and the log type (`conn`, `dns`, `http`, ...) as `event_code`; IPs, ports,
+protocol and DNS query go in the usual columns and everything else stays in `raw`. Zeek's own
+housekeeping logs (`loaded_scripts`, `stats`, `capture_loss`, `packet_filter`, `reporter`)
+describe the sensor, not the network, and are counted as rejected.
+
+The Zeek captures do not overlap the host logs in time: day 1's network log covers
+2020-04-30 00:06-00:45 UTC and day 2's runs from 2020-05-01 07:02 to 2020-05-02 02:16, while the
+host logs are from 2020-05-02 02:55-08:29. They look like a separate run of the same emulation,
+so network and host events can't be joined into one timeline; network rules use them alone.
+
+**Why:** network rules (DNS tunnelling, beaconing, port scans) need real traffic, and keeping
+one row per Zeek record means a rule can always point at its exact evidence.
+
 ## 2026-10-16: Detection rules as folders of SQL, KQL and test events
 
 Each rule is a folder under `detections/` holding `rule.yml` (ID, ATT&CK technique, severity),

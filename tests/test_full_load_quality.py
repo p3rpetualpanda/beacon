@@ -97,7 +97,8 @@ def test_sources_agree_on_time(con: duckdb.DuckDBPyConnection) -> None:
 def test_core_fields_are_populated(con: duckdb.DuckDBPyConnection) -> None:
     row = con.execute(
         """
-        SELECT count(*) FILTER (WHERE host_name IS NULL),
+        -- Zeek records come from a network sensor, so they name IPs rather than a host.
+        SELECT count(*) FILTER (WHERE host_name IS NULL AND source <> 'zeek'),
                count(*) FILTER (WHERE event_category IS NOT NULL) / count(*),
                count(*) FILTER (WHERE source = 'sysmon' AND event_code = '1'
                                 AND (process_path IS NULL OR user_name IS NULL)),
@@ -115,3 +116,20 @@ def test_core_fields_are_populated(con: duckdb.DuckDBPyConnection) -> None:
 
 def test_event_ids_are_unique(con: duckdb.DuckDBPyConnection) -> None:
     assert con.execute("SELECT count(*) - count(DISTINCT event_id) FROM events").fetchone() == (0,)
+
+
+def test_zeek_conn_and_dns_have_network_fields(con: duckdb.DuckDBPyConnection) -> None:
+    row = con.execute(
+        """
+        SELECT count(*) FILTER (WHERE event_code = 'conn'),
+               count(*) FILTER (WHERE event_code = 'conn' AND (src_ip IS NULL OR dst_ip IS NULL
+                                                             OR dst_port IS NULL)),
+               count(*) FILTER (WHERE event_code = 'dns' AND dns_query IS NULL)
+        FROM events WHERE source = 'zeek'
+        """
+    ).fetchone()
+    assert row is not None
+    conns, bad_conns, dns_without_query = row
+    assert conns > 1000
+    assert bad_conns == 0
+    assert dns_without_query < 10

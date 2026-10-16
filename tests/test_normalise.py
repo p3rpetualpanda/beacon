@@ -9,7 +9,7 @@ from pathlib import Path
 import duckdb
 
 from beacon.load import load_dataset, load_windows_json
-from tests.conftest import APT29_SAMPLE, LSASS_SAMPLE, make_dataset, zip_json
+from tests.conftest import APT29_SAMPLE, LSASS_SAMPLE, ZEEK_SAMPLE, make_dataset, zip_json
 
 RTLO = "‮"
 
@@ -215,7 +215,7 @@ def test_offset_falls_back_to_collector_times(
     )
 
 
-def test_load_dataset_extracts_and_skips_zeek(
+def test_load_dataset_extracts_windows_and_skips_other_formats(
     con: duckdb.DuckDBPyConnection, tmp_path: Path
 ) -> None:
     raw, interim = tmp_path / "raw", tmp_path / "interim"
@@ -226,5 +226,36 @@ def test_load_dataset_extracts_and_skips_zeek(
     assert result.rows_loaded == 175
     assert (interim / "otrf" / "lsass.json").exists()
 
-    zeek = make_dataset("zeek", format="zeek", path="zeek.log")
-    assert load_dataset(con, zeek, raw, interim) is None
+    auth = make_dataset("auth", format="linux_auth", path="auth.log")
+    assert load_dataset(con, auth, raw, interim) is None
+
+
+def test_zeek_sample_loads_network_fields(con: duckdb.DuckDBPyConnection, tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    (raw / "zeek").mkdir(parents=True)
+    (raw / "zeek" / "z.log").write_bytes(ZEEK_SAMPLE.read_bytes())
+    dataset = make_dataset("zeek", format="zeek", path="zeek/z.log")
+    result = load_dataset(con, dataset, raw, tmp_path / "interim")
+    assert result is not None
+    assert (result.rows_read, result.rows_rejected, result.duplicates_dropped) == (17, 1, 1)
+    assert result.rows_loaded == 15
+    rows = dict(
+        con.execute(
+            "SELECT event_code, count(*) FROM events WHERE source = 'zeek' GROUP BY 1"
+        ).fetchall()
+    )
+    assert rows == {"conn": 6, "dns": 4, "http": 2, "ssl": 1, "kerberos": 1, "weird": 1}
+    unmapped = con.execute(
+        "SELECT count(*) FROM events WHERE source = 'zeek' AND event_category IS NULL"
+    ).fetchone()
+    assert unmapped == (0,)
+    conn = con.execute(
+        "SELECT src_ip, dst_ip, dst_port, network_protocol, ts FROM events "
+        "WHERE event_code = 'conn' ORDER BY ts LIMIT 1"
+    ).fetchone()
+    assert conn is not None and conn[:4] == ("10.0.1.6", "10.0.0.4", 53, "udp")
+    assert str(conn[4]).startswith("2020-04-30 00:06:39")
+    queries = con.execute(
+        "SELECT count(*) FROM events WHERE event_code = 'dns' AND dns_query IS NOT NULL"
+    ).fetchone()
+    assert queries == (4,)

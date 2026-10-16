@@ -124,13 +124,13 @@ LOAD_MANIFEST = """datasets:
 
 @pytest.fixture
 def load_env(tmp_path: Path) -> dict[str, Path]:
-    from tests.conftest import LSASS_SAMPLE, zip_json
+    from tests.conftest import LSASS_SAMPLE, ZEEK_SAMPLE, zip_json
 
     manifest = tmp_path / "manifest.yml"
     manifest.write_text(LOAD_MANIFEST, encoding="utf-8")
     raw = tmp_path / "raw"
     zip_json(LSASS_SAMPLE, raw / "otrf" / "lsass.zip")
-    (raw / "otrf" / "zeek.log").write_text("")
+    (raw / "otrf" / "zeek.log").write_bytes(ZEEK_SAMPLE.read_bytes())
     return {"manifest": manifest, "raw": raw, "db": tmp_path / "beacon.duckdb", "tmp": tmp_path}
 
 
@@ -153,8 +153,8 @@ def test_load_command(load_env: dict[str, Path], capsys: pytest.CaptureFixture[s
     assert cli.main(_load_args(load_env)) == 0
     out = capsys.readouterr().out
     assert "lsass  175 events (9 duplicates, 0 rejected, local time +16h)" in out
-    assert "skipped     zeek" in out
-    assert "175 events loaded" in out
+    assert "zeek  15 events (1 duplicates, 1 rejected)" in out
+    assert "190 events loaded" in out
 
 
 def test_load_unknown_dataset(
