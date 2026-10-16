@@ -24,3 +24,6 @@ data/interim/
 .vscode/
 .idea/
 .DS_Store
+
+# Local Claude Code notes
+CLAUDE.md
