@@ -127,7 +127,9 @@ def _load(
                 return 1
             result = load_mod.load_dataset(con, dataset, raw_dir, interim_dir)
             if result is None:
-                print(f"skipped     {dataset.name}  ({dataset.format} is loaded in a later phase)")
+                print(
+                    f"skipped     {dataset.name}  ({dataset.format} is loaded with its own command)"
+                )
                 continue
             total += result.rows_loaded
             _print_result(result)

@@ -52,7 +52,9 @@ SELECT
     fld(j, 'EventID')                                              AS event_code,
     try_strptime(fld(j, 'UtcTime'), '%Y-%m-%d %H:%M:%S.%g')       AS utc_ts,
     try_strptime(coalesce(fld(j, 'EventTime'), fld(j, 'TimeCreated')),
-                 ['%Y-%m-%d %H:%M:%S.%g', '%Y-%m-%d %H:%M:%S'])    AS local_ts,
+                 ['%Y-%m-%d %H:%M:%S.%g', '%Y-%m-%d %H:%M:%S',
+                  -- Winlogbeat exports write local time in ISO form with a misleading Z.
+                  '%Y-%m-%dT%H:%M:%S.%gZ', '%Y-%m-%dT%H:%M:%SZ'])  AS local_ts,
     -- Sysmon logs the real user in "User"; AccountName on Sysmon rows is the Sysmon service (SYSTEM).
     coalesce(
         fld(j, 'TargetUserName'),

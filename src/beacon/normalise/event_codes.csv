@@ -75,3 +75,17 @@ system,7045,configuration,service-installed,success
 linux_auth,ssh_invalid_user,authentication,ssh-invalid-user,failure
 linux_auth,ssh_login_failure,authentication,ssh-login,failure
 linux_auth,ssh_login_success,authentication,ssh-login,success
+zeek,conn,network,connection,
+zeek,dns,network,dns-query,
+zeek,http,network,http-request,
+zeek,ssl,network,tls-handshake,
+zeek,x509,network,certificate-seen,
+zeek,kerberos,authentication,kerberos-request,
+zeek,dce_rpc,network,rpc-call,
+zeek,smb_mapping,network,smb-share-mapped,
+zeek,smb_files,file,smb-file-access,
+zeek,files,file,file-transferred,
+zeek,pe,file,pe-file-seen,
+zeek,notice,intrusion_detection,zeek-notice,
+zeek,weird,network,protocol-anomaly,
+zeek,dpd,network,protocol-detection-failed,
