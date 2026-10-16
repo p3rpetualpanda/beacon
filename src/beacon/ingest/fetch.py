@@ -13,7 +13,7 @@ import urllib.parse
 import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import IO, Literal
 
 import yaml
@@ -84,8 +84,9 @@ def _validate(dataset: Dataset, seen: set[str]) -> None:
         raise ManifestError(f"{where}: format must be one of {', '.join(FORMATS)}")
     if not all(TECHNIQUE_RE.fullmatch(t) for t in dataset.attack_techniques):
         raise ManifestError(f"{where}: attack_techniques must look like T1234 or T1234.001")
-    relative = Path(dataset.path)
-    if relative.is_absolute() or ".." in relative.parts:
+    # Manifest paths are POSIX-style; a backslash or drive letter (C:) could escape on Windows.
+    relative = PurePosixPath(dataset.path)
+    if relative.is_absolute() or ".." in relative.parts or any(c in dataset.path for c in "\\:"):
         raise ManifestError(f"{where}: path must be relative and stay inside the data directory")
 
 

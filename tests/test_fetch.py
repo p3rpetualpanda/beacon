@@ -127,6 +127,8 @@ def test_load_manifest_reads_entries(tmp_path: Path) -> None:
         ("datasets:" + VALID_ENTRY.format(sha="XYZ"), "sha256"),
         ("datasets:" + VALID_ENTRY.format(sha="a" * 64) * 2, "duplicate"),
         ("datasets:" + VALID_ENTRY.format(sha="a" * 64).replace("one.zip\n", "/etc/x\n"), "path"),
+        ("datasets:" + VALID_ENTRY.format(sha="a" * 64).replace("one.zip\n", "..\\x\n"), "path"),
+        ("datasets:" + VALID_ENTRY.format(sha="a" * 64).replace("one.zip\n", "C:/x\n"), "path"),
         ("datasets:\n  - name: only-a-name\n", "entry 0"),
     ],
 )
