@@ -9,6 +9,8 @@ from datetime import UTC, tzinfo
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+import yaml
+
 from beacon import __version__, db
 from beacon import detect as detect_mod
 from beacon import load as load_mod
@@ -138,7 +140,8 @@ def _load(
 def _detect(db_path: Path, rules_dir: Path, only: list[str] | None) -> int:
     try:
         rules = detect_mod.load_rules(rules_dir)
-    except (detect_mod.RuleError, OSError) as exc:
+    # ValueError covers RuleError and unreadable text; YAMLError a malformed rule.yml.
+    except (ValueError, OSError, yaml.YAMLError) as exc:
         print(f"cannot load rules: {exc}", file=sys.stderr)
         return 2
     unknown = set(only or ()) - {r.rule_id for r in rules}

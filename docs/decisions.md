@@ -8,7 +8,16 @@ Each rule is a folder under `detections/` holding `rule.yml` (ID, ATT&CK techniq
 `rule.sql` (a SELECT over `events`), `rule.kql` (the same logic for Microsoft Sentinel) and two
 small JSON-lines files of events: one the rule must fire on and one it must stay quiet on.
 `beacon detect` writes hits to `alerts`, keyed by a hash of the rule and its evidence, so
-re-running a rule keeps each alert's triage status.
+re-running a rule keeps each alert's triage status. An alert the rule no longer produces is
+removed only while it is still `new`; a triaged one is kept, even if a reload changed its
+evidence and the rule now raises a fresh alert beside it.
+
+Threshold rules (R02, R16, R20) alert when a sliding-window count first reaches the threshold.
+A long attack whose rate dips below it and recovers raises a second alert; that is accepted
+for now rather than adding session logic.
+
+Process rules count a launch once: when Sysmon 1 and Security 4688 both record the same command
+line on the same host within 5 seconds, only the Sysmon record alerts.
 
 Precision in `rule_performance` counts a hit as a true positive when its dataset is documented
 to contain the rule's technique (or its parent or a sub-technique). The datasets have no

@@ -42,11 +42,15 @@ def test_rule_is_quiet_on_negative_fixture(con: duckdb.DuckDBPyConnection, rule:
     assert run_rule(con, rule) == 0
 
 
-def test_encoded_powershell_alerts_once_per_launch(con: duckdb.DuckDBPyConnection) -> None:
-    # The fixture has the same launch logged by both Sysmon and Security 4688.
-    (rule,) = [r for r in RULES if r.rule_id == "R05"]
+# Positive fixtures that log one launch in both Sysmon and Security 4688 must alert once per
+# launch, and each extra case (renamed tool, quoted payload, task under Microsoft) must fire.
+@pytest.mark.parametrize(("rule_id", "alerts"), [("R03", 2), ("R05", 2), ("R06", 1), ("R07", 3)])
+def test_positive_fixture_alert_counts(
+    con: duckdb.DuckDBPyConnection, rule_id: str, alerts: int
+) -> None:
+    (rule,) = [r for r in RULES if r.rule_id == rule_id]
     load_fixture(con, rule_folder(rule) / "positive.jsonl")
-    assert run_rule(con, rule) == 1
+    assert run_rule(con, rule) == alerts
 
 
 def test_phase_2_rules_are_present() -> None:
@@ -54,9 +58,16 @@ def test_phase_2_rules_are_present() -> None:
     assert [r.rule_id for r in RULES] == expected
 
 
-def test_rerun_keeps_alert_status(con: duckdb.DuckDBPyConnection) -> None:
+def load_one_lsass_access(con: duckdb.DuckDBPyConnection) -> Rule:
+    """Load R03's first positive event only, and return R03."""
     (rule,) = [r for r in RULES if r.rule_id == "R03"]
     load_fixture(con, rule_folder(rule) / "positive.jsonl")
+    con.execute("DELETE FROM events WHERE event_id <> 'fixture-1'")
+    return rule
+
+
+def test_rerun_keeps_alert_status(con: duckdb.DuckDBPyConnection) -> None:
+    rule = load_one_lsass_access(con)
     run_rule(con, rule)
     con.execute("UPDATE alerts SET status = 'true_positive'")
     assert run_rule(con, rule) == 1
@@ -75,8 +86,7 @@ def test_rerun_keeps_alert_status(con: duckdb.DuckDBPyConnection) -> None:
 def test_precision_counts_hits_in_datasets_with_the_technique(
     con: duckdb.DuckDBPyConnection,
 ) -> None:
-    (rule,) = [r for r in RULES if r.rule_id == "R03"]
-    load_fixture(con, rule_folder(rule) / "positive.jsonl")
+    rule = load_one_lsass_access(con)
     con.execute(
         "INSERT INTO events BY NAME SELECT * REPLACE ('other' AS dataset, 'e2' AS event_id) "
         "FROM events"
@@ -125,7 +135,11 @@ def test_detect_command(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> N
     con.close()
     assert cli.main(["detect", "--db", str(db_path), "--rules-dir", str(RULES_DIR)]) == 0
     out = capsys.readouterr().out
-    assert "R03  LSASS memory access" in out and "1 alerts" in out
+    assert "R03  LSASS memory access" in out and "2 alerts" in out
     assert cli.main(["detect", "--db", str(db_path), "--only", "R77"]) == 2
     missing = str(tmp_path / "nowhere")
     assert cli.main(["detect", "--db", str(db_path), "--rules-dir", missing]) == 2
+    bad = tmp_path / "bad" / "R01_x"
+    bad.mkdir(parents=True)
+    (bad / "rule.yml").write_text("id: [unclosed", encoding="utf-8")
+    assert cli.main(["detect", "--db", str(db_path), "--rules-dir", str(bad.parent)]) == 2

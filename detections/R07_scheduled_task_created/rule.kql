@@ -1,7 +1,6 @@
 // R07: a scheduled task is registered, or schtasks.exe /create runs, outside the allow-list.
 SecurityEvent
-| where (EventID == 4698 and not(TaskName matches regex @"(?i)^\\(Microsoft\\|OneDrive )"))
+| where (EventID == 4698 and not(TaskName matches regex @"(?i)^\\OneDrive Standalone Update Task-"))
      or (EventID == 4688 and NewProcessName endswith @"\schtasks.exe"
-         and CommandLine matches regex @"(?i)\s[/-]create\b"
-         and not(CommandLine matches regex @'(?i)[/-]tn\s+"?\\?(Microsoft\\|OneDrive )'))
+         and CommandLine matches regex @"(?i)\s[/-]create\b")
 | project TimeGenerated, Computer, Account, TaskName, CommandLine

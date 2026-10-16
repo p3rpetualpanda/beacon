@@ -1,2 +1,4 @@
 {"ts": "2020-05-02 10:00:00", "source": "winsec", "event_code": "4698", "host_name": "scranton", "user_name": "dschrute", "task_name": "\\Updater"}
 {"ts": "2020-05-02 10:00:01", "source": "sysmon", "event_code": "1", "host_name": "scranton", "user_name": "dschrute", "process_name": "schtasks.exe", "process_command_line": "schtasks.exe /Create /F /SC DAILY /TN \"Updater\" /TR \"C:\\Users\\Public\\a.exe\""}
+{"ts": "2020-05-02 10:00:01", "source": "winsec", "event_code": "4688", "host_name": "scranton", "user_name": "dschrute", "process_name": "schtasks.exe", "process_command_line": "schtasks.exe /Create /F /SC DAILY /TN \"Updater\" /TR \"C:\\Users\\Public\\a.exe\""}
+{"ts": "2020-05-02 10:00:02", "source": "winsec", "event_code": "4698", "host_name": "scranton", "user_name": "dschrute", "task_name": "\\Microsoft\\Windows\\UpdateCheck"}

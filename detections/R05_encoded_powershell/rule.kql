@@ -2,5 +2,5 @@
 SecurityEvent
 | where EventID == 4688
 | where NewProcessName endswith @"\powershell.exe" or NewProcessName endswith @"\pwsh.exe"
-| where CommandLine matches regex @'(?i)\s[-/](ec|e|en|enc|enco|encod|encode|encoded|encodedc|encodedco|encodedcom|encodedcomm|encodedcomma|encodedcomman|encodedcommand)\s+[A-Za-z0-9+/=]{20,}'
+| where CommandLine matches regex @'(?i)\s[-/\x{2013}\x{2014}](ec|e|en|enc|enco|encod|encode|encoded|encodedc|encodedco|encodedcom|encodedcomm|encodedcomma|encodedcomman|encodedcommand)\s+["'']?[A-Za-z0-9+/=]{20,}'
 | project TimeGenerated, Computer, Account, NewProcessName, CommandLine

@@ -10,8 +10,16 @@ SELECT
 FROM events
 WHERE source = 'sysmon' AND event_code = '10'
   AND target_process_name = 'lsass.exe'
-  AND (try_cast(granted_access AS INTEGER) & 16) <> 0
-  AND coalesce(process_name, '') NOT IN (
-      'csrss.exe', 'wininit.exe', 'services.exe', 'lsass.exe', 'lsm.exe',
-      'svchost.exe', 'msmpeng.exe', 'wmiprvse.exe'
+  AND (try_cast(granted_access AS BIGINT) & 16) <> 0
+  -- Allow Windows' own processes only from their real folders, so a renamed tool such as
+  -- C:\Users\Public\svchost.exe still alerts.
+  AND NOT (
+      process_name IN ('csrss.exe', 'wininit.exe', 'services.exe', 'lsass.exe', 'lsm.exe',
+                       'svchost.exe', 'wmiprvse.exe')
+      AND regexp_matches(process_path, '(?i)^c:\\windows\\system32\\(wbem\\)?[^\\]+$')
+  )
+  AND NOT (
+      process_name = 'msmpeng.exe'
+      AND regexp_matches(process_path,
+                         '(?i)^c:\\(programdata\\microsoft|program files)\\windows defender\\')
   )

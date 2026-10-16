@@ -1,3 +1,3 @@
-{"ts": "2020-05-02 10:00:00", "source": "sysmon", "event_code": "10", "host_name": "nashua", "user_name": "system", "process_name": "svchost.exe", "target_process_name": "lsass.exe", "granted_access": "0x1fffff"}
+{"ts": "2020-05-02 10:00:00", "source": "sysmon", "event_code": "10", "host_name": "nashua", "user_name": "system", "process_name": "svchost.exe", "process_path": "C:\\windows\\system32\\svchost.exe", "target_process_name": "lsass.exe", "granted_access": "0x1fffff"}
 {"ts": "2020-05-02 10:00:01", "source": "sysmon", "event_code": "10", "host_name": "nashua", "user_name": "pbeesly", "process_name": "m.exe", "target_process_name": "lsass.exe", "granted_access": "0x1000"}
 {"ts": "2020-05-02 10:00:02", "source": "sysmon", "event_code": "10", "host_name": "nashua", "user_name": "pbeesly", "process_name": "m.exe", "target_process_name": "explorer.exe", "granted_access": "0x1010"}

@@ -11,7 +11,7 @@ SELECT
 FROM events
 WHERE ((source = 'sysmon' AND event_code = '1') OR (source = 'winsec' AND event_code = '4688'))
   AND process_name IN ('powershell.exe', 'pwsh.exe')
-  AND regexp_matches(process_command_line, '(?i)\s[-/](ec|e|en|enc|enco|encod|encode|encoded|encodedc|encodedco|encodedcom|encodedcomm|encodedcomma|encodedcomman|encodedcommand)\s+[A-Za-z0-9+/=]{20,}')
+  AND regexp_matches(process_command_line, '(?i)\s[-/\x{2013}\x{2014}](ec|e|en|enc|enco|encod|encode|encoded|encodedc|encodedco|encodedcom|encodedcomm|encodedcomma|encodedcomman|encodedcommand)\s+["'']?[A-Za-z0-9+/=]{20,}')
   -- Tuned: when Sysmon and Security both log the same launch, keep only the Sysmon record.
   AND NOT (
       source = 'winsec' AND EXISTS (
