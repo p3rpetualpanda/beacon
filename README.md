@@ -5,7 +5,7 @@ real attack logs from public datasets, detects attacker behaviour with SQL rules
 mapped to [MITRE ATT&CK](https://attack.mitre.org/), scores unusual activity with
 machine learning, and reports the results on a SOC dashboard.
 
-> **Status:** early development. Beacon downloads the datasets and loads 843,857 Windows
+> **Status:** early development. Beacon downloads the datasets and loads 834,508 Windows
 > events into one normalised table; detections and dashboards follow (see the roadmap).
 
 ## Quick start
@@ -41,8 +41,8 @@ de-duplicated, the time range, and how much of each key field is empty:
 | --- | ---: | ---: | --- |
 | APT29 day 1 | 196,081 | 0 | UTC−4 |
 | APT29 day 2 | 585,655 | 1,631 | UTC−4 |
-| Seven atomic attack datasets | 62,121 | 9 | UTC−4 |
-| **Total** | **843,857** | **1,640** | |
+| Five atomic attack datasets | 52,772 | 9 | UTC−4 |
+| **Total** | **834,508** | **1,640** | |
 
 ## Roadmap
 
