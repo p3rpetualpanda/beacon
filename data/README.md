@@ -11,11 +11,17 @@ match the manifest. The only data in the repository is a few hundred sample reco
 | --- | --- | --- | --- |
 | [OTRF Security-Datasets](https://github.com/OTRF/Security-Datasets) (pinned to commit `d9d40ef`) | Attack techniques replayed in a Windows lab, recorded as JSON-lines event logs, each mapped to MITRE ATT&CK | MIT ([LICENSE](https://github.com/OTRF/Security-Datasets/blob/master/LICENSE)) | Rule fixtures, end-to-end testing, model evaluation |
 | [APT29 ATT&CK evaluation](https://github.com/OTRF/Security-Datasets/tree/master/datasets/compound/apt29) (part of OTRF) | A two-day simulated APT29 intrusion: Windows host logs and Zeek network logs | MIT | End-to-end scenario and the incident report |
+| [Loghub OpenSSH](https://github.com/logpai/loghub/tree/master/OpenSSH) ([Zenodo record 8196385](https://doi.org/10.5281/zenodo.1144100)) | 28 days of a real internet-facing SSH server's log (655,147 lines), with genuine password-guessing attempts | CC BY 4.0 | SSH brute-force rule (R20) on real attacks |
 
 The OTRF README mentions GPL-3.0 in one place, but the repository's LICENSE file is MIT.
 Beacon follows the LICENSE file.
 
-Total download is about 66 MB compressed.
+Loghub requires attribution: Jieming Zhu, Shilin He, Pinjia He, Jinyang Liu, Michael R. Lyu,
+"Loghub: A Large Collection of System Log Datasets for AI-driven Log Analytics", IEEE ISSRE
+2023. Its syslog lines carry no year or time zone; Beacon assumes the log starts in December
+2015 and reads its times as UTC.
+
+Total download is about 70 MB compressed.
 
 ## Adding a dataset
 

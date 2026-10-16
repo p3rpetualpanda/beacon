@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import csv
 import json
+import tempfile
 from dataclasses import dataclass
 from datetime import UTC, datetime, tzinfo
 from importlib import resources
@@ -19,7 +20,7 @@ import duckdb
 from beacon.db import read_sql
 from beacon.ingest import linux_auth
 from beacon.ingest.fetch import Dataset
-from beacon.ingest.otrf import extract_json
+from beacon.ingest.otrf import extract_json, extract_tar_log
 
 # Local-to-UTC offsets are rounded to the nearest 15 minutes, the smallest real time-zone step.
 OFFSET_STEP_S = 900
@@ -103,7 +104,8 @@ def infer_offset_seconds(con: duckdb.DuckDBPyConnection) -> int | None:
         """
         SELECT median(epoch(try_strptime(j->>'UtcTime', '%Y-%m-%d %H:%M:%S.%g'))
                       - epoch(try_strptime(coalesce(j->>'EventTime', j->>'TimeCreated'),
-                                           ['%Y-%m-%d %H:%M:%S.%g', '%Y-%m-%d %H:%M:%S'])))
+                                           ['%Y-%m-%d %H:%M:%S.%g', '%Y-%m-%d %H:%M:%S',
+                                            '%Y-%m-%dT%H:%M:%S.%gZ', '%Y-%m-%dT%H:%M:%SZ'])))
         FROM raw_stage
         """,
     )
@@ -167,12 +169,53 @@ def _upsert_dataset_row(con: duckdb.DuckDBPyConnection, row: list[object]) -> No
     con.execute("INSERT OR REPLACE INTO datasets VALUES (?, ?, ?, ?, ?, ?)", row)
 
 
+def load_zeek_json(con: duckdb.DuckDBPyConnection, dataset: Dataset, json_path: Path) -> LoadResult:
+    """Normalise one OTRF Zeek JSON-lines file (all log types combined) into `events`."""
+    con.execute("BEGIN TRANSACTION")
+    try:
+        con.execute(
+            "CREATE OR REPLACE TEMP TABLE raw_stage AS "
+            "SELECT json AS j FROM read_ndjson_objects(?, ignore_errors = true)",
+            [str(json_path)],
+        )
+        rows_read = _scalar(con, "SELECT count(*) FROM raw_stage")
+        con.execute("DELETE FROM events WHERE dataset = ?", [dataset.name])
+        con.execute(read_sql("zeek.sql"), {"dataset": dataset.name})
+        rows_rejected = _scalar(
+            con, "SELECT count(*) FROM stage_typed WHERE ts IS NULL OR stream IS NULL"
+        )
+        rows_loaded = _scalar(con, "SELECT count(*) FROM events WHERE dataset = ?", [dataset.name])
+        result = LoadResult(
+            dataset=dataset.name,
+            rows_read=rows_read,
+            rows_rejected=rows_rejected,
+            duplicates_dropped=rows_read - rows_rejected - rows_loaded,
+            rows_loaded=rows_loaded,
+            ts_offset_hours=None,
+        )
+        record_quality(con, result)
+        upsert_dataset(con, dataset)
+        con.execute("DROP TABLE IF EXISTS stage_typed")
+        con.execute("DROP TABLE IF EXISTS raw_stage")
+        con.execute("COMMIT")
+    except Exception:
+        con.execute("ROLLBACK")
+        raise
+    return result
+
+
 def load_dataset(
     con: duckdb.DuckDBPyConnection, dataset: Dataset, raw_dir: Path, interim_dir: Path
 ) -> LoadResult | None:
-    """Extract and load one manifest dataset. Returns None for formats not loaded yet."""
+    """Extract and load one manifest dataset. Returns None for formats not loaded this way."""
+    if dataset.format == "zeek":
+        return load_zeek_json(con, dataset, raw_dir / dataset.path)
+    if dataset.format == "linux_auth" and dataset.syslog_year is not None:
+        log = extract_tar_log(raw_dir / dataset.path, interim_dir / "auth" / f"{dataset.name}.log")
+        # shortcut: the archive's time zone isn't recorded, so its syslog times are read as UTC.
+        return load_auth_log(con, log, dataset=dataset.name, year=dataset.syslog_year, meta=dataset)
     if dataset.format != "otrf_windows":
-        return None  # Zeek network logs are parsed in Phase 3.
+        return None
     archive = raw_dir / dataset.path
     json_path = extract_json(archive, interim_dir / "otrf" / f"{dataset.name}.json")
     return load_windows_json(con, dataset, json_path)
@@ -185,24 +228,28 @@ def load_auth_log(
     dataset: str,
     year: int,
     tz: tzinfo = UTC,
+    meta: Dataset | None = None,
 ) -> LoadResult:
-    """Parse a Linux auth.log and load its SSH events as source `linux_auth`."""
+    """Parse a Linux auth.log and load its SSH events as source `linux_auth`.
+
+    meta, when given (a manifest dataset), is recorded in `datasets` in the same transaction.
+    """
     with path.open(encoding="utf-8", errors="replace") as handle:
         lines = handle.readlines()
     parsed = list(linux_auth.parse_lines(lines, year=year, tz=tz))
     unique = {event.event_id: event for event in parsed}
     rows = [
-        (
-            e.event_id,
-            e.ts,
-            e.event_code,
-            e.host_name,
-            e.process_id,
-            e.user_name,
-            e.src_ip,
-            e.src_port,
-            json.dumps({"message": e.raw, "auth_method": e.auth_method}),
-        )
+        {
+            "event_id": e.event_id,
+            "ts": e.ts.isoformat(),
+            "event_code": e.event_code,
+            "host_name": e.host_name,
+            "process_id": e.process_id,
+            "user_name": e.user_name,
+            "src_ip": e.src_ip,
+            "src_port": e.src_port,
+            "raw": json.dumps({"message": e.raw, "auth_method": e.auth_method}),
+        }
         for e in unique.values()
     ]
 
@@ -214,7 +261,23 @@ def load_auth_log(
             "src_ip VARCHAR, src_port INTEGER, raw JSON)"
         )
         if rows:
-            con.executemany("INSERT INTO auth_stage VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", rows)
+            # Passing Python rows to DuckDB took minutes for the 655k-line Loghub log; a
+            # JSON-lines file that DuckDB reads itself takes seconds.
+            with tempfile.TemporaryDirectory() as tmp:
+                staged = Path(tmp) / "auth.jsonl"
+                staged.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+                con.execute(
+                    # Numbers are read as text and try_cast, so one absurd port in a hostile
+                    # log line becomes NULL instead of aborting the whole load.
+                    "INSERT INTO auth_stage SELECT event_id, ts, event_code, host_name, "
+                    "try_cast(process_id AS BIGINT), user_name, src_ip, "
+                    "try_cast(src_port AS INTEGER), raw FROM read_json(?, format = "
+                    "'newline_delimited', columns = {event_id: 'VARCHAR', ts: 'TIMESTAMP', "
+                    "event_code: 'VARCHAR', host_name: 'VARCHAR', process_id: 'VARCHAR', "
+                    "user_name: 'VARCHAR', src_ip: 'VARCHAR', src_port: 'VARCHAR', "
+                    "raw: 'VARCHAR'})",
+                    [str(staged)],
+                )
         con.execute("DELETE FROM events WHERE dataset = ?", [dataset])
         con.execute(
             """
@@ -239,17 +302,20 @@ def load_auth_log(
             ts_offset_hours=None,
         )
         record_quality(con, result)
-        _upsert_dataset_row(
-            con,
-            [
-                dataset,
-                f"SSH authentication events from {path.name}",
-                "Linux auth.log",
-                "own data",
-                "linux_auth",
-                [],
-            ],
-        )
+        if meta is not None:
+            upsert_dataset(con, meta)
+        else:
+            _upsert_dataset_row(
+                con,
+                [
+                    dataset,
+                    f"SSH authentication events from {path.name}",
+                    "Linux auth.log",
+                    "own data",
+                    "linux_auth",
+                    [],
+                ],
+            )
         con.execute("DROP TABLE auth_stage")
         con.execute("COMMIT")
     except Exception:

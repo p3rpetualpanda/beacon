@@ -24,3 +24,7 @@ data/interim/
 .vscode/
 .idea/
 .DS_Store
+
+# Local Claude notes (kept on this PC, never committed)
+CLAUDE.md
+mistakes.md

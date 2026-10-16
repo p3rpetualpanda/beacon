@@ -130,6 +130,22 @@ def test_load_manifest_reads_entries(tmp_path: Path) -> None:
         ("datasets:" + VALID_ENTRY.format(sha="a" * 64).replace("one.zip\n", "..\\x\n"), "path"),
         ("datasets:" + VALID_ENTRY.format(sha="a" * 64).replace("one.zip\n", "C:/x\n"), "path"),
         ("datasets:\n  - name: only-a-name\n", "entry 0"),
+        (
+            "datasets:" + VALID_ENTRY.format(sha="a" * 64) + "    format: linux_auth\n",
+            "syslog_year",
+        ),
+        (
+            "datasets:"
+            + VALID_ENTRY.format(sha="a" * 64)
+            + "    format: linux_auth\n    syslog_year: true\n",
+            "syslog_year",
+        ),
+        (
+            "datasets:"
+            + VALID_ENTRY.format(sha="a" * 64)
+            + "    format: linux_auth\n    syslog_year: 99999\n",
+            "syslog_year",
+        ),
     ],
 )
 def test_load_manifest_rejects_bad_entries(tmp_path: Path, body: str, message: str) -> None:
@@ -143,8 +159,11 @@ def test_project_manifest_is_valid_and_pinned() -> None:
     assert datasets
     for dataset in datasets:
         assert dataset.url.startswith("https://")
-        # Pinned to a 40-character commit SHA, never a moving branch like "master".
-        assert re.search(r"/[0-9a-f]{40}/", dataset.url), dataset.name
+        # Pinned to a 40-character commit SHA or a Zenodo record (immutable), never a moving
+        # branch like "master".
+        assert re.search(r"/[0-9a-f]{40}/|^https://zenodo\.org/records/\d+/", dataset.url), (
+            dataset.name
+        )
 
 
 @pytest.mark.parametrize(
@@ -175,5 +194,5 @@ def test_manifest_rejects_bad_metadata(
 
 def test_repo_manifest_has_formats_and_techniques() -> None:
     datasets = load_manifest(REPO_ROOT / "data" / "manifest.yml")
-    assert {d.format for d in datasets} == {"otrf_windows", "zeek"}
+    assert {d.format for d in datasets} == {"otrf_windows", "zeek", "linux_auth"}
     assert all(d.attack_techniques for d in datasets)

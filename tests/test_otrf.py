@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import io
 import os
 import stat
+import tarfile
 import zipfile
 from pathlib import Path
 
 import pytest
 
-from beacon.ingest.otrf import ArchiveError, extract_json
+from beacon.ingest.otrf import ArchiveError, extract_json, extract_tar_log
 from tests.conftest import LSASS_SAMPLE, zip_json
 
 
@@ -77,3 +79,51 @@ def test_rejects_zip_bombs(tmp_path: Path) -> None:
     with pytest.raises(ArchiveError, match="suspicious ratio"):
         extract_json(archive, tmp_path / "a.json")
     assert not (tmp_path / "a.json").exists()
+
+
+def _tar(path: Path, members: dict[str, bytes]) -> Path:
+    with tarfile.open(path, "w:gz") as tf:
+        for name, data in members.items():
+            info = tarfile.TarInfo(name)
+            info.size = len(data)
+            tf.addfile(info, io.BytesIO(data))
+    return path
+
+
+def test_extract_tar_log_writes_the_single_file(tmp_path: Path) -> None:
+    archive = _tar(tmp_path / "a.tar.gz", {"SSH.log": b"line\n"})
+    dest = extract_tar_log(archive, tmp_path / "out" / "a.log")
+    assert dest.read_bytes() == b"line\n"
+
+
+@pytest.mark.parametrize(
+    "members",
+    [{"a.log": b"x", "b.log": b"y"}, {"../evil.log": b"x"}, {"/abs.log": b"x"}],
+)
+def test_extract_tar_log_rejects_unexpected_archives(
+    tmp_path: Path, members: dict[str, bytes]
+) -> None:
+    archive = _tar(tmp_path / "a.tar.gz", members)
+    with pytest.raises(ArchiveError):
+        extract_tar_log(archive, tmp_path / "a.log")
+
+
+def test_extract_tar_log_rejects_links(tmp_path: Path) -> None:
+    archive = tmp_path / "a.tar.gz"
+    with tarfile.open(archive, "w:gz") as tf:
+        info = tarfile.TarInfo("a.log")
+        info.size = 1
+        tf.addfile(info, io.BytesIO(b"x"))
+        link = tarfile.TarInfo("link")
+        link.type = tarfile.SYMTYPE
+        link.linkname = "/etc/passwd"
+        tf.addfile(link)
+    with pytest.raises(ArchiveError, match="one regular file"):
+        extract_tar_log(archive, tmp_path / "a.log")
+
+
+def test_extract_tar_log_rejects_compression_bombs(tmp_path: Path) -> None:
+    archive = _tar(tmp_path / "a.tar.gz", {"SSH.log": b"0" * 5_000_000})
+    with pytest.raises(ArchiveError, match="suspicious ratio"):
+        extract_tar_log(archive, tmp_path / "a.log")
+    assert not (tmp_path / "a.log").exists()

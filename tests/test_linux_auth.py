@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import duckdb
@@ -66,3 +67,17 @@ def test_load_auth_log(con: duckdb.DuckDBPyConnection) -> None:
     assert con.execute("SELECT format FROM datasets WHERE name = 'lab'").fetchone() == (
         "linux_auth",
     )
+
+
+def test_absurd_port_becomes_null_instead_of_failing_the_load(
+    con: duckdb.DuckDBPyConnection, tmp_path: Path
+) -> None:
+    log = tmp_path / "auth.log"
+    log.write_text(
+        "Mar  1 09:00:00 web1 sshd[10]: Failed password for root from 203.0.113.5 "
+        "port 99999999999 ssh2\n",
+        encoding="utf-8",
+    )
+    result = load_auth_log(con, log, dataset="odd", year=2026)
+    assert result.rows_loaded == 1
+    assert con.execute("SELECT src_ip, src_port FROM events").fetchone() == ("203.0.113.5", None)

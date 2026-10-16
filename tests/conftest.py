@@ -15,6 +15,7 @@ DATA = Path(__file__).parent / "data"
 APT29_SAMPLE = DATA / "apt29_day1_sample.json"
 LSASS_SAMPLE = DATA / "lsass_dump_comsvcs.json"
 AUTH_SAMPLE = DATA / "auth_sample.log"
+ZEEK_SAMPLE = DATA / "apt29_zeek_sample.log"
 
 
 @pytest.fixture

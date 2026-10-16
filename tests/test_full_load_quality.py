@@ -25,8 +25,14 @@ EXPECTED = {
     "lsass_dump_comsvcs": (184, date(2020, 10, 18)),
     "psexec_empire": (4_348, date(2020, 9, 20)),
     "wmi_exec_empire": (6_383, date(2020, 9, 21)),
-    "schtasks_empire": (1_297, date(2020, 9, 21)),
     "run_keys_empire": (40_569, date(2020, 9, 4)),
+    "purplesharp_ad_playbook": (25_993, date(2020, 10, 22)),
+    "schtask_create_remote": (1_041, date(2020, 12, 19)),
+    "covenant_sharpsc_create": (3_390, date(2020, 8, 6)),
+    "service_mod_fax": (437, date(2020, 10, 22)),
+    "covenant_dcom_excel4macro": (8_121, date(2020, 9, 17)),
+    "rdp_taskmanager_lsass_dump": (5_489, date(2020, 9, 22)),
+    "lsass_dump_dumpert_syscalls": (118, date(2020, 10, 19)),
 }
 
 
@@ -61,7 +67,7 @@ def test_every_record_is_accounted_for(con: duckdb.DuckDBPyConnection) -> None:
 
 def test_duplicates_match_the_profiled_count(con: duckdb.DuckDBPyConnection) -> None:
     quality = latest_quality(con)
-    assert sum(int(quality[name][2]) for name in EXPECTED) == 1_640
+    assert sum(int(quality[name][2]) for name in EXPECTED) == 1_731
 
 
 def test_events_table_matches_quality_log(con: duckdb.DuckDBPyConnection) -> None:
@@ -98,7 +104,8 @@ def test_sources_agree_on_time(con: duckdb.DuckDBPyConnection) -> None:
 def test_core_fields_are_populated(con: duckdb.DuckDBPyConnection) -> None:
     row = con.execute(
         """
-        SELECT count(*) FILTER (WHERE host_name IS NULL),
+        -- Zeek records come from a network sensor, so they name IPs rather than a host.
+        SELECT count(*) FILTER (WHERE host_name IS NULL AND source <> 'zeek'),
                count(*) FILTER (WHERE event_category IS NOT NULL) / count(*),
                count(*) FILTER (WHERE source = 'sysmon' AND event_code = '1'
                                 AND (process_path IS NULL OR user_name IS NULL)),
@@ -116,3 +123,22 @@ def test_core_fields_are_populated(con: duckdb.DuckDBPyConnection) -> None:
 
 def test_event_ids_are_unique(con: duckdb.DuckDBPyConnection) -> None:
     assert con.execute("SELECT count(*) - count(DISTINCT event_id) FROM events").fetchone() == (0,)
+
+
+def test_zeek_conn_and_dns_have_network_fields(con: duckdb.DuckDBPyConnection) -> None:
+    row = con.execute(
+        """
+        SELECT count(*) FILTER (WHERE event_code = 'conn'),
+               count(*) FILTER (WHERE event_code = 'conn' AND (src_ip IS NULL OR dst_ip IS NULL
+                                                             OR dst_port IS NULL)),
+               count(*) FILTER (WHERE event_code = 'dns' AND dns_query IS NULL),
+               count(*) FILTER (WHERE event_category IS NULL)
+        FROM events WHERE source = 'zeek'
+        """
+    ).fetchone()
+    assert row is not None
+    conns, bad_conns, dns_without_query, unmapped = row
+    assert conns > 1000
+    assert bad_conns == 0
+    assert dns_without_query < 10
+    assert unmapped == 0  # every Zeek log type in the data has a row in event_codes.csv

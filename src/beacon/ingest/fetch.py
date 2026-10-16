@@ -47,6 +47,8 @@ class Dataset:
     description: str = ""
     format: str = "otrf_windows"  # otrf_windows | zeek | linux_auth
     attack_techniques: tuple[str, ...] = ()
+    # Syslog lines carry no year; linux_auth datasets say which year their log starts in.
+    syslog_year: int | None = None
 
 
 def load_manifest(manifest_path: Path) -> list[Dataset]:
@@ -82,6 +84,11 @@ def _validate(dataset: Dataset, seen: set[str]) -> None:
         raise ManifestError(f"{where}: size_bytes must be a positive integer")
     if dataset.format not in FORMATS:
         raise ManifestError(f"{where}: format must be one of {', '.join(FORMATS)}")
+    year = dataset.syslog_year
+    if dataset.format == "linux_auth" and not (type(year) is int and 1990 <= year <= 2100):
+        raise ManifestError(
+            f"{where}: linux_auth datasets need a syslog_year between 1990 and 2100"
+        )
     if not all(TECHNIQUE_RE.fullmatch(t) for t in dataset.attack_techniques):
         raise ManifestError(f"{where}: attack_techniques must look like T1234 or T1234.001")
     # Manifest paths are POSIX-style; a backslash or drive letter (C:) could escape on Windows.

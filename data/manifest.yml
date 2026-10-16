@@ -80,17 +80,6 @@ datasets:
     format: otrf_windows
     attack_techniques: [T1047]
 
-  - name: schtasks_empire
-    description: "Scheduled task creation with Empire (T1053.005)"
-    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/persistence/host/empire_schtasks_creation_standard_user.zip
-    path: otrf/atomic/schtasks_empire.zip
-    sha256: b073a18420c90394cd2b6ad7589c78d90eba32dc155ed04b12ac824a8fc591b4
-    size_bytes: 263732
-    licence: MIT
-    source: OTRF Security-Datasets
-    format: otrf_windows
-    attack_techniques: [T1053.005]
-
   - name: run_keys_empire
     description: "Registry Run key persistence with Empire (T1547.001)"
     url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/persistence/host/empire_persistence_registry_modification_run_keys_standard_user.zip
@@ -101,3 +90,96 @@ datasets:
     source: OTRF Security-Datasets
     format: otrf_windows
     attack_techniques: [T1547.001]
+
+  - name: purplesharp_ad_playbook
+    description: "PurpleSharp Active Directory playbook I: password spraying, Kerberoasting, share discovery, WinRM"
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/lateral_movement/host/purplesharp_ad_playbook_I.zip
+    path: otrf/atomic/purplesharp_ad_playbook.zip
+    sha256: 2a2d80e7b8d8ee6821a1754118f3ab908b4bac84cf4ed3d018e281f631bd2870
+    size_bytes: 1362498
+    licence: MIT
+    source: OTRF Security-Datasets
+    format: otrf_windows
+    attack_techniques: [T1110.003, T1558.003, T1135, T1021.006]
+
+  - name: schtask_create_remote
+    description: "Remote scheduled task creation (T1053.005)"
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/lateral_movement/host/schtask_create.zip
+    path: otrf/atomic/schtask_create_remote.zip
+    sha256: 74394c64b660d5b229936d00ea8b3ceb900126cd9e261f58fa2be766579ec5de
+    size_bytes: 126281
+    licence: MIT
+    source: OTRF Security-Datasets
+    format: otrf_windows
+    attack_techniques: [T1053.005]
+
+  - name: covenant_sharpsc_create
+    description: "Covenant SharpSC remote service creation over SMB (T1021.002)"
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/lateral_movement/host/covenant_sharpsc_create_dcerpc_smb_svcctl.zip
+    path: otrf/atomic/covenant_sharpsc_create.zip
+    sha256: 77487bbd1fc7954adbc9ba07bfeeeb9d57192b0f0e0f54e1ee5a05c71a5be84a
+    size_bytes: 276984
+    licence: MIT
+    source: OTRF Security-Datasets
+    format: otrf_windows
+    attack_techniques: [T1021.002]
+
+  - name: service_mod_fax
+    description: "Fax service binary path modified with sc.exe (T1543.003)"
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/privilege_escalation/host/cmd_service_mod_fax.zip
+    path: otrf/atomic/service_mod_fax.zip
+    sha256: 4a40cb09c514f1a4c601588cbfa5c81e12a6f8a5ab92fd76bad846c1a4352447
+    size_bytes: 36023
+    licence: MIT
+    source: OTRF Security-Datasets
+    format: otrf_windows
+    attack_techniques: [T1543.003]
+
+  - name: covenant_dcom_excel4macro
+    description: "Covenant DCOM ExecuteExcel4Macro lateral movement (T1021.003)"
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/lateral_movement/host/covenant_dcom_executeexcel4macro_allowed.zip
+    path: otrf/atomic/covenant_dcom_excel4macro.zip
+    sha256: 4dabf4be2b6103dadf27c29ad5734acf477003b3e1b1922e8e43871da7e0fdef
+    size_bytes: 695021
+    licence: MIT
+    source: OTRF Security-Datasets
+    format: otrf_windows
+    attack_techniques: [T1021.003]
+
+  - name: rdp_taskmanager_lsass_dump
+    description: "LSASS dumped with Task Manager over RDP (T1003.001)"
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/credential_access/host/rdp_interactive_taskmanager_lsass_dump.zip
+    path: otrf/atomic/rdp_taskmanager_lsass_dump.zip
+    sha256: a7761e64c891162e949afebf367084a6dddd2f3dac7b91bce870fcf9f6206fba
+    size_bytes: 402013
+    licence: MIT
+    source: OTRF Security-Datasets
+    format: otrf_windows
+    attack_techniques: [T1003.001]
+
+  - name: lsass_dump_dumpert_syscalls
+    description: "LSASS dumped with Dumpert direct syscalls (T1003.001)"
+    url: https://raw.githubusercontent.com/OTRF/Security-Datasets/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/atomic/windows/credential_access/host/cmd_lsass_memory_dumpert_syscalls.zip
+    path: otrf/atomic/lsass_dump_dumpert_syscalls.zip
+    sha256: a28dbf708685a80edfb0b3d2a00c9bf196dd394fc1d61a933878841f4872a7ed
+    size_bytes: 12915
+    licence: MIT
+    source: OTRF Security-Datasets
+    format: otrf_windows
+    attack_techniques: [T1003.001]
+
+  # Loghub's OpenSSH log: 28 days of a real internet-facing lab server, full of genuine
+  # password-guessing attempts. Syslog lines carry no year or zone; the year is assumed
+  # (the log runs Dec 10 to Jan 7) and times are read as UTC. Licence CC BY 4.0: cite Zhu
+  # et al., "Loghub: A Large Collection of System Log Datasets", ISSRE 2023.
+  - name: loghub_openssh
+    description: "Loghub OpenSSH server log: 28 days of real SSH brute-force attempts"
+    url: https://zenodo.org/records/8196385/files/SSH.tar.gz?download=1
+    path: loghub/SSH.tar.gz
+    sha256: 296610a35773f58b7c295e5407fc5ccdf48beb3c544fc14a6309addf904a2712
+    size_bytes: 4596666
+    licence: CC-BY-4.0
+    source: Loghub (logpai)
+    format: linux_auth
+    syslog_year: 2015
+    attack_techniques: [T1110.001, T1110.003]
