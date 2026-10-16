@@ -7,6 +7,7 @@ whose uncompressed size is far larger than a log export should be (a zip bomb gu
 
 from __future__ import annotations
 
+import tarfile
 import zipfile
 from pathlib import Path, PurePosixPath
 from typing import IO
@@ -42,6 +43,44 @@ def extract_json(archive: Path, dest: Path) -> Path:
                 copied = _copy_limited(src, out, member.file_size)
             if copied != member.file_size:
                 raise ArchiveError(f"{archive}: {member.filename} is truncated")
+            tmp.replace(dest)
+        finally:
+            tmp.unlink(missing_ok=True)
+    return dest
+
+
+def extract_tar_log(archive: Path, dest: Path) -> Path:
+    """Extract the single regular file of a .tar.gz log archive (e.g. Loghub) to dest.
+
+    The same rules as for zips apply: one member, no links, a safe name and a size limit.
+    An existing dest that is newer than the archive is reused.
+    """
+    if dest.exists() and dest.stat().st_mtime >= archive.stat().st_mtime:
+        return dest
+
+    with tarfile.open(archive, "r:gz") as tf:
+        members = tf.getmembers()
+        files = [m for m in members if m.isfile()]
+        if len(files) != 1 or any(not (m.isfile() or m.isdir()) for m in members):
+            names = ", ".join(m.name for m in members) or "none"
+            raise ArchiveError(f"{archive}: expected one regular file, found {names}")
+        member = files[0]
+        path = PurePosixPath(member.name)
+        if path.is_absolute() or ".." in path.parts or "\\" in member.name:
+            raise ArchiveError(f"{archive}: unsafe member name {member.name!r}")
+        if member.size > MAX_UNCOMPRESSED_BYTES:
+            raise ArchiveError(f"{archive}: member {member.name!r} is too large")
+
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        tmp = dest.with_suffix(dest.suffix + ".part")
+        src = tf.extractfile(member)
+        if src is None:  # pragma: no cover - isfile() members always have data
+            raise ArchiveError(f"{archive}: cannot read {member.name!r}")
+        try:
+            with src, tmp.open("wb") as out:
+                copied = _copy_limited(src, out, member.size)
+            if copied != member.size:
+                raise ArchiveError(f"{archive}: {member.name} is truncated")
             tmp.replace(dest)
         finally:
             tmp.unlink(missing_ok=True)

@@ -167,3 +167,19 @@ datasets:
     source: OTRF Security-Datasets
     format: otrf_windows
     attack_techniques: [T1003.001]
+
+  # Loghub's OpenSSH log: 28 days of a real internet-facing lab server, full of genuine
+  # password-guessing attempts. Syslog lines carry no year or zone; the year is assumed
+  # (the log runs Dec 10 to Jan 7) and times are read as UTC. Licence CC BY 4.0: cite Zhu
+  # et al., "Loghub: A Large Collection of System Log Datasets", ISSRE 2023.
+  - name: loghub_openssh
+    description: "Loghub OpenSSH server log: 28 days of real SSH brute-force attempts"
+    url: https://zenodo.org/records/8196385/files/SSH.tar.gz?download=1
+    path: loghub/SSH.tar.gz
+    sha256: 296610a35773f58b7c295e5407fc5ccdf48beb3c544fc14a6309addf904a2712
+    size_bytes: 4596666
+    licence: CC-BY-4.0
+    source: Loghub (logpai)
+    format: linux_auth
+    syslog_year: 2015
+    attack_techniques: [T1110.001, T1110.003]

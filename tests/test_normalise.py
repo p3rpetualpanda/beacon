@@ -9,7 +9,14 @@ from pathlib import Path
 import duckdb
 
 from beacon.load import load_dataset, load_windows_json
-from tests.conftest import APT29_SAMPLE, LSASS_SAMPLE, ZEEK_SAMPLE, make_dataset, zip_json
+from tests.conftest import (
+    APT29_SAMPLE,
+    AUTH_SAMPLE,
+    LSASS_SAMPLE,
+    ZEEK_SAMPLE,
+    make_dataset,
+    zip_json,
+)
 
 RTLO = "‮"
 
@@ -290,3 +297,25 @@ def test_iso_local_time_from_winlogbeat_exports(
     assert (result.rows_loaded, result.rows_rejected, result.ts_offset_hours) == (2, 0, 5)
     ts = con.execute("SELECT ts FROM events WHERE event_code = '4698'").fetchone()
     assert ts is not None and str(ts[0]) == "2020-12-19 12:00:22.263000"
+
+
+def test_linux_auth_dataset_loads_from_a_tar_archive(
+    con: duckdb.DuckDBPyConnection, tmp_path: Path
+) -> None:
+    import tarfile
+
+    raw = tmp_path / "raw"
+    (raw / "loghub").mkdir(parents=True)
+    with tarfile.open(raw / "loghub" / "ssh.tar.gz", "w:gz") as tf:
+        tf.add(AUTH_SAMPLE, arcname="SSH.log")
+    dataset = make_dataset(
+        "ssh",
+        format="linux_auth",
+        path="loghub/ssh.tar.gz",
+        syslog_year=2015,
+        attack_techniques=("T1110.001",),
+    )
+    result = load_dataset(con, dataset, raw, tmp_path / "interim")
+    assert result is not None and result.rows_loaded > 0
+    row = con.execute("SELECT attack_techniques FROM datasets WHERE name = 'ssh'").fetchone()
+    assert row == (["T1110.001"],)

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import csv
 import json
+import tempfile
 from dataclasses import dataclass
 from datetime import UTC, datetime, tzinfo
 from importlib import resources
@@ -19,7 +20,7 @@ import duckdb
 from beacon.db import read_sql
 from beacon.ingest import linux_auth
 from beacon.ingest.fetch import Dataset
-from beacon.ingest.otrf import extract_json
+from beacon.ingest.otrf import extract_json, extract_tar_log
 
 # Local-to-UTC offsets are rounded to the nearest 15 minutes, the smallest real time-zone step.
 OFFSET_STEP_S = 900
@@ -209,6 +210,12 @@ def load_dataset(
     """Extract and load one manifest dataset. Returns None for formats not loaded this way."""
     if dataset.format == "zeek":
         return load_zeek_json(con, dataset, raw_dir / dataset.path)
+    if dataset.format == "linux_auth" and dataset.syslog_year is not None:
+        log = extract_tar_log(raw_dir / dataset.path, interim_dir / "auth" / f"{dataset.name}.log")
+        # shortcut: the archive's time zone isn't recorded, so its syslog times are read as UTC.
+        result = load_auth_log(con, log, dataset=dataset.name, year=dataset.syslog_year)
+        upsert_dataset(con, dataset)  # replace the generic row load_auth_log writes
+        return result
     if dataset.format != "otrf_windows":
         return None
     archive = raw_dir / dataset.path
@@ -230,17 +237,17 @@ def load_auth_log(
     parsed = list(linux_auth.parse_lines(lines, year=year, tz=tz))
     unique = {event.event_id: event for event in parsed}
     rows = [
-        (
-            e.event_id,
-            e.ts,
-            e.event_code,
-            e.host_name,
-            e.process_id,
-            e.user_name,
-            e.src_ip,
-            e.src_port,
-            json.dumps({"message": e.raw, "auth_method": e.auth_method}),
-        )
+        {
+            "event_id": e.event_id,
+            "ts": e.ts.isoformat(),
+            "event_code": e.event_code,
+            "host_name": e.host_name,
+            "process_id": e.process_id,
+            "user_name": e.user_name,
+            "src_ip": e.src_ip,
+            "src_port": e.src_port,
+            "raw": json.dumps({"message": e.raw, "auth_method": e.auth_method}),
+        }
         for e in unique.values()
     ]
 
@@ -252,7 +259,19 @@ def load_auth_log(
             "src_ip VARCHAR, src_port INTEGER, raw JSON)"
         )
         if rows:
-            con.executemany("INSERT INTO auth_stage VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", rows)
+            # Passing Python rows to DuckDB took minutes for the 655k-line Loghub log; a
+            # JSON-lines file that DuckDB reads itself takes seconds.
+            with tempfile.TemporaryDirectory() as tmp:
+                staged = Path(tmp) / "auth.jsonl"
+                staged.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+                con.execute(
+                    "INSERT INTO auth_stage SELECT * FROM read_json(?, format = "
+                    "'newline_delimited', columns = {event_id: 'VARCHAR', ts: 'TIMESTAMP', "
+                    "event_code: 'VARCHAR', host_name: 'VARCHAR', process_id: 'BIGINT', "
+                    "user_name: 'VARCHAR', src_ip: 'VARCHAR', src_port: 'INTEGER', "
+                    "raw: 'VARCHAR'})",
+                    [str(staged)],
+                )
         con.execute("DELETE FROM events WHERE dataset = ?", [dataset])
         con.execute(
             """
