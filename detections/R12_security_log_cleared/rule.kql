@@ -1,0 +1,4 @@
+// R12: the Security event log is cleared.
+SecurityEvent
+| where EventID == 1102
+| project TimeGenerated, Computer, Account

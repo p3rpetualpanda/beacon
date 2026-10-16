@@ -1,0 +1,8 @@
+id: R08
+name: New service installed from a user-writable path
+technique: T1543.003
+tactic: Persistence
+severity: high
+description: >-
+  A service is installed (System 7045 or Security 4697) whose binary is in a folder ordinary
+  users can write to, such as Users, Temp, AppData or ProgramData.

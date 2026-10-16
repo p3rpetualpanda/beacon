@@ -1,0 +1,14 @@
+// R01: 10+ failed logons for one user from one IP in 10 minutes, then a success.
+let fails = SecurityEvent
+    | where EventID == 4625
+    | summarize FailCount = count(), LastFail = max(TimeGenerated)
+        by TargetAccount, IpAddress, bin(TimeGenerated, 10m)
+    | where FailCount >= 10;
+fails
+| join kind=inner (
+    SecurityEvent
+    | where EventID == 4624
+    | project SuccessTime = TimeGenerated, TargetAccount, IpAddress, Computer
+  ) on TargetAccount, IpAddress
+| where SuccessTime between (LastFail .. LastFail + 10m)
+| project SuccessTime, Computer, TargetAccount, IpAddress, FailCount

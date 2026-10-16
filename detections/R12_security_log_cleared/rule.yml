@@ -1,0 +1,6 @@
+id: R12
+name: Security log cleared
+technique: T1070.001
+tactic: Defense Evasion
+severity: high
+description: The Windows Security event log is cleared (Security 1102).

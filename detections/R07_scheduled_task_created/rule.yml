@@ -1,0 +1,8 @@
+id: R07
+name: Scheduled task created
+technique: T1053.005
+tactic: Persistence
+severity: medium
+description: >-
+  A scheduled task is registered (Security 4698) or schtasks.exe is run with /create, outside
+  an allow-list of Microsoft and OneDrive tasks.

@@ -1,0 +1,6 @@
+// R05: PowerShell started with -EncodedCommand (or a short form) and a base64 payload.
+SecurityEvent
+| where EventID == 4688
+| where NewProcessName endswith @"\powershell.exe" or NewProcessName endswith @"\pwsh.exe"
+| where CommandLine matches regex @'(?i)\s[-/](ec|e|en|enc|enco|encod|encode|encoded|encodedc|encodedco|encodedcom|encodedcomm|encodedcomma|encodedcomman|encodedcommand)\s+[A-Za-z0-9+/=]{20,}'
+| project TimeGenerated, Computer, Account, NewProcessName, CommandLine

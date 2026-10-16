@@ -1,0 +1,7 @@
+// R09: a value is set under a CurrentVersion Run key (Sysmon event 13).
+Sysmon
+| where EventID == 13
+| where TargetObject matches regex @'(?i)\\CurrentVersion\\(Run|RunOnce|RunServices|RunServicesOnce)\\'
+| where not(Image endswith @"\MsMpEng.exe" and TargetObject endswith @"\Run\WindowsDefender")
+| where not(Image endswith @"\Teams.exe" and TargetObject endswith @"\Run\com.squirrel.Teams.Teams")
+| project TimeGenerated, Computer, User, Image, TargetObject, Details

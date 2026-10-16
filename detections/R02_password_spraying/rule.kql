@@ -1,0 +1,7 @@
+// R02: one IP fails to log on as 15+ different users in 10 minutes.
+SecurityEvent
+| where EventID == 4625
+| summarize Users = dcount(TargetAccount), FirstFail = min(TimeGenerated),
+            LastFail = max(TimeGenerated)
+    by IpAddress, bin(TimeGenerated, 10m)
+| where Users >= 15

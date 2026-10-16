@@ -1,0 +1,8 @@
+id: R01
+name: Brute force then success
+technique: T1110.001
+tactic: Credential Access
+severity: high
+description: >-
+  10 or more failed logons for one user from one IP within 10 minutes, then a successful
+  logon for that user from that IP within 10 minutes.

@@ -1,0 +1,8 @@
+// R06: an Office application starts a shell or script host.
+SecurityEvent
+| where EventID == 4688
+| extend Parent = tolower(tostring(split(ParentProcessName, @"\")[-1])),
+         Child = tolower(tostring(split(NewProcessName, @"\")[-1]))
+| where Parent in ("winword.exe", "excel.exe", "powerpnt.exe", "outlook.exe")
+| where Child in ("cmd.exe", "powershell.exe", "pwsh.exe", "wscript.exe", "cscript.exe", "mshta.exe")
+| project TimeGenerated, Computer, Account, ParentProcessName, NewProcessName, CommandLine

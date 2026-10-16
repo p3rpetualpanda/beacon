@@ -1,0 +1,6 @@
+id: R09
+name: Run key persistence
+technique: T1547.001
+tactic: Persistence
+severity: medium
+description: A value is written under a CurrentVersion Run or RunOnce registry key (Sysmon 13).

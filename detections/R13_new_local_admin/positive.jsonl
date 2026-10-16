@@ -1,0 +1,2 @@
+{"ts": "2020-05-02 10:00:00", "source": "winsec", "event_code": "4720", "host_name": "scranton", "user_name": "toby", "raw": {"TargetSid": "S-1-5-21-1-1000"}}
+{"ts": "2020-05-02 10:05:00", "source": "winsec", "event_code": "4732", "host_name": "scranton", "user_name": "administrators", "raw": {"TargetSid": "S-1-5-32-544", "MemberSid": "S-1-5-21-1-1000"}}

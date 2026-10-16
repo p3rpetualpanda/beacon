@@ -1,0 +1,9 @@
+// R03: a non-system process opens lsass.exe with memory-read access (Sysmon event 10).
+// Uses the community Sysmon parser function, which exposes EventData fields as columns.
+Sysmon
+| where EventID == 10 and TargetImage endswith @"\lsass.exe"
+| where binary_and(tolong(GrantedAccess), 0x10) != 0
+| extend Process = tolower(tostring(split(SourceImage, @"\")[-1]))
+| where Process !in ("csrss.exe", "wininit.exe", "services.exe", "lsass.exe", "lsm.exe",
+                     "svchost.exe", "msmpeng.exe", "wmiprvse.exe")
+| project TimeGenerated, Computer, SourceUser, SourceImage, GrantedAccess

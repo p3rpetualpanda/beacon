@@ -1,0 +1,8 @@
+id: R16
+name: Discovery burst
+technique: T1087.002
+tactic: Discovery
+severity: medium
+description: >-
+  One user runs 5 or more different discovery commands (whoami, net user, net group, nltest,
+  systeminfo and similar) on one host within 5 minutes.

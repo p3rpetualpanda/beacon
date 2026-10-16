@@ -18,6 +18,7 @@ make check     # lint, type-check, security scan and tests
 make data      # download the pinned public datasets into data/raw/ and verify checksums
 make load      # normalise them into data/beacon.duckdb (about 3 minutes)
 make quality   # data-quality checks on the full database
+make detect    # run the detection rules; prints alerts and precision per rule
 ```
 
 SSH logins from a Linux server can be loaded too:
@@ -49,8 +50,8 @@ de-duplicated, the time range, and how much of each key field is empty:
 | Phase | Scope | Status |
 | --- | --- | --- |
 | 0 | Repo, tooling, CI, dataset downloader | Done |
-| 1 | Parsers and a normalised `events` table in DuckDB | In progress |
-| 2 | 12 ATT&CK-mapped SQL detections with KQL equivalents; dashboard v1 | Planned |
+| 1 | Parsers and a normalised `events` table in DuckDB | Done |
+| 2 | 12 ATT&CK-mapped SQL detections with KQL equivalents; dashboard v1 | In progress |
 | 3 | Zeek network logs, 8 more detections, investigation pages | Planned |
 | 4 | Anomaly detection (robust z-score, Isolation Forest, LOF) and risk scoring | Planned |
 | 5 | Power BI report, incident report, Docker, demo | Planned |

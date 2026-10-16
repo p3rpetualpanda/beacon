@@ -1,0 +1,6 @@
+{"ts": "2020-05-02 10:00:00", "source": "sysmon", "event_code": "1", "host_name": "scranton", "user_name": "dschrute", "process_name": "whoami.exe", "process_command_line": "whoami /all"}
+{"ts": "2020-05-02 10:00:10", "source": "sysmon", "event_code": "1", "host_name": "scranton", "user_name": "dschrute", "process_name": "net.exe", "process_command_line": "net user /domain"}
+{"ts": "2020-05-02 10:00:20", "source": "sysmon", "event_code": "1", "host_name": "scranton", "user_name": "dschrute", "process_name": "net1.exe", "process_command_line": "net1 user /domain"}
+{"ts": "2020-05-02 10:00:30", "source": "sysmon", "event_code": "1", "host_name": "scranton", "user_name": "dschrute", "process_name": "net.exe", "process_command_line": "net group \"Domain Admins\" /domain"}
+{"ts": "2020-05-02 10:00:40", "source": "sysmon", "event_code": "1", "host_name": "scranton", "user_name": "dschrute", "process_name": "nltest.exe", "process_command_line": "nltest /dclist:"}
+{"ts": "2020-05-02 10:00:50", "source": "sysmon", "event_code": "1", "host_name": "scranton", "user_name": "dschrute", "process_name": "systeminfo.exe", "process_command_line": "systeminfo"}

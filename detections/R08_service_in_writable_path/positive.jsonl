@@ -1,0 +1,2 @@
+{"ts": "2020-05-02 10:00:00", "source": "system", "event_code": "7045", "host_name": "nashua", "user_name": "system", "service_name": "updsvc", "service_path": "C:\\Users\\Public\\updsvc.exe"}
+{"ts": "2020-05-02 10:00:01", "source": "winsec", "event_code": "4697", "host_name": "nashua", "user_name": "system", "service_name": "tmpsvc", "service_path": "%TEMP%\\tmpsvc.exe"}

@@ -2,6 +2,31 @@
 
 Short records of design choices and why they were made, newest first.
 
+## 2026-10-16: Detection rules as folders of SQL, KQL and test events
+
+Each rule is a folder under `detections/` holding `rule.yml` (ID, ATT&CK technique, severity),
+`rule.sql` (a SELECT over `events`), `rule.kql` (the same logic for Microsoft Sentinel) and two
+small JSON-lines files of events: one the rule must fire on and one it must stay quiet on.
+`beacon detect` writes hits to `alerts`, keyed by a hash of the rule and its evidence, so
+re-running a rule keeps each alert's triage status.
+
+Precision in `rule_performance` counts a hit as a true positive when its dataset is documented
+to contain the rule's technique (or its parent or a sub-technique). The datasets have no
+per-event attack labels, so this is an approximation: it can't tell a real attack from noise
+inside an attack dataset, and it depends on the manifest's technique lists being complete.
+
+**Why:** one folder per rule keeps the logic, the Sentinel version and the proof together,
+and tests run every rule against known-good and known-bad events on every push. The KQL is
+written by hand and not run, because Beacon has no Sentinel workspace.
+
+## 2026-10-16: Drop datasets that Windows Defender quarantines
+
+Defender flags `dcsync_empire` and `net_localgroup_admins` as malware, because they are real
+attack logs. Beacon no longer downloads them; rules they would have exercised are covered by
+test events instead.
+
+**Why:** the project must run on a normal Windows PC without weakening its antivirus.
+
 ## 2026-10-15: Infer each dataset's clock offset from the data
 
 NXLog wrote `EventTime` in the lab's local time with no time zone. Sysmon records also carry

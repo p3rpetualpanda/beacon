@@ -10,6 +10,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from beacon import __version__, db
+from beacon import detect as detect_mod
 from beacon import load as load_mod
 from beacon.ingest import fetch as fetch_mod
 
@@ -41,6 +42,11 @@ def build_parser() -> argparse.ArgumentParser:
     load.add_argument("--interim-dir", type=Path, default=DEFAULT_INTERIM_DIR)
     load.add_argument("--only", nargs="+", metavar="NAME", help="load only these datasets")
 
+    detect = commands.add_parser("detect", help="run the detection rules and record alerts")
+    detect.add_argument("--db", type=Path, default=db.DEFAULT_DB)
+    detect.add_argument("--rules-dir", type=Path, default=detect_mod.DEFAULT_RULES_DIR)
+    detect.add_argument("--only", nargs="+", metavar="ID", help="run only these rules, e.g. R03")
+
     auth = commands.add_parser("load-auth-log", help="load SSH events from a Linux auth.log")
     auth.add_argument("file", type=Path)
     auth.add_argument("--db", type=Path, default=db.DEFAULT_DB)
@@ -56,6 +62,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "load":
         return _load(args.db, args.manifest, args.raw_dir, args.interim_dir, args.only)
+    if args.command == "detect":
+        return _detect(args.db, args.rules_dir, args.only)
     if args.command == "load-auth-log":
         return _load_auth_log(args.file, args.db, args.dataset, args.year, args.tz)
     if args.data_command == "fetch":
@@ -124,6 +132,30 @@ def _load(
         print(f"{total:,} events loaded into {db_path}")
     finally:
         con.close()
+    return 0
+
+
+def _detect(db_path: Path, rules_dir: Path, only: list[str] | None) -> int:
+    rules = detect_mod.load_rules(rules_dir)
+    unknown = set(only or ()) - {r.rule_id for r in rules}
+    if unknown:
+        print(f"unknown rule(s): {', '.join(sorted(unknown))}", file=sys.stderr)
+        return 2
+    con = db.connect(db_path)
+    try:
+        for rule in rules:
+            if not only or rule.rule_id in only:
+                detect_mod.run_rule(con, rule)
+        rows = con.execute(
+            "SELECT rule_id, name, hits, precision FROM rule_performance "
+            "WHERE rule_id IN (SELECT unnest($ids))",
+            {"ids": [r.rule_id for r in rules if not only or r.rule_id in only]},
+        ).fetchall()
+    finally:
+        con.close()
+    for rule_id, name, hits, precision in rows:
+        shown = "-" if precision is None else f"{precision:.0%}"
+        print(f"{rule_id}  {name:<40} {hits:>5} alerts  precision {shown}")
     return 0
 
 

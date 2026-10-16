@@ -1,0 +1,1 @@
+{"ts": "2020-05-02 10:00:00", "source": "sysmon", "event_code": "10", "host_name": "nashua", "user_name": "pbeesly", "process_name": "m.exe", "target_process_name": "lsass.exe", "granted_access": "0x1010"}
