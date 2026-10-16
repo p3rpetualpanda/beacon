@@ -5,8 +5,9 @@ real attack logs from public datasets, detects attacker behaviour with SQL rules
 mapped to [MITRE ATT&CK](https://attack.mitre.org/), scores unusual activity with
 machine learning, and reports the results on a SOC dashboard.
 
-> **Status:** early development. Beacon downloads the datasets and loads 1,058,365 Windows,
-> network and SSH events into one normalised table; detections and dashboards follow (see the roadmap).
+> **Status:** Phase 2 in progress. Beacon loads 1,058,365 Windows, network and SSH events
+> into one normalised table and runs 12 ATT&CK-mapped detection rules over them. The SOC
+> dashboard is next (see the roadmap).
 
 ## Quick start
 
@@ -16,7 +17,7 @@ Requires [uv](https://docs.astral.sh/uv/) and Python 3.12+.
 make install   # create the virtual environment and install dependencies
 make check     # lint, type-check, security scan and tests
 make data      # download the pinned public datasets into data/raw/ and verify checksums
-make load      # normalise them into data/beacon.duckdb (about 3 minutes)
+make load      # normalise them into data/beacon.duckdb (a few minutes)
 make quality   # data-quality checks on the full database
 make detect    # run the detection rules; prints alerts and precision per rule
 ```
@@ -48,21 +49,57 @@ de-duplicated, the time range, and how much of each key field is empty:
 | Loghub OpenSSH server log (real SSH brute-force attempts) | 175,828 | 0 | assumed UTC |
 | **Total** | **1,058,365** | **1,731** | |
 
+## Detections
+
+Each rule lives in [`detections/`](detections/) as SQL over `events`, a hand-written Microsoft
+Sentinel KQL version, and two sets of test events: one it must fire on, one it must stay quiet
+on. CI runs every rule against both. `make detect` writes hits to `alerts` and prints, per rule:
+
+| Rule | ATT&CK | Alerts on the full data | Precision |
+| --- | --- | ---: | ---: |
+| R01 Brute force then success | T1110.001 | 0 | – |
+| R02 Password spraying | T1110.003 | 0 | – |
+| R03 LSASS memory access | T1003.001 | 12 | 100% |
+| R05 Encoded PowerShell | T1059.001 | 9 | 67% |
+| R06 Office app spawns a shell | T1204.002 | 0 | – |
+| R07 Scheduled task created | T1053.005 | 2 | 100% |
+| R08 New service from a user-writable path | T1543.003 | 0 | – |
+| R09 Run key persistence | T1547.001 | 2 | 50% |
+| R12 Security log cleared | T1070.001 | 3 | 0% |
+| R13 New local admin | T1136.001 | 0 | – |
+| R16 Discovery burst | T1087.002 | 1 | 0% |
+| R20 SSH brute force (Linux) | T1110.001 | 515 | 100% |
+
+Precision counts a hit as true when its dataset is documented to contain the rule's technique,
+because the data has no per-event attack labels. That undercounts real attacks in datasets with
+incomplete technique lists (R05's Empire launchers, R09's APT29 Run key) and can't separate lab
+setup from the attack (R12). Rules at zero have no matching behaviour in the data yet; their
+test events show they work. See [docs/decisions.md](docs/decisions.md).
+
 ## Roadmap
 
 | Phase | Scope | Status |
 | --- | --- | --- |
 | 0 | Repo, tooling, CI, dataset downloader | Done |
 | 1 | Parsers and a normalised `events` table in DuckDB | Done |
-| 2 | 12 ATT&CK-mapped SQL detections with KQL equivalents; dashboard v1 | In progress |
-| 3 | Zeek network logs, 8 more detections, investigation pages | Planned |
+| 2 | 12 ATT&CK-mapped SQL detections with KQL equivalents; dashboard v1 | Rules done; dashboard to do |
+| 3 | Zeek network logs, 8 more detections, investigation pages | Zeek logs loaded; rules and pages to do |
 | 4 | Anomaly detection (robust z-score, Isolation Forest, LOF) and risk scoring | Planned |
 | 5 | Power BI report, incident report, Docker, demo | Planned |
+
+### Still to do
+
+- **Phase 2:** Streamlit overview and alert-queue pages, and a second pass on the noisiest
+  rules (R12 fires on lab setup; R05 and R09 need better labels to score fairly).
+- **Phase 3:** rules R04, R10, R11, R14, R15, R17, R18 and R19 (the network rules can use the
+  Zeek logs, which don't overlap the host logs in time), plus investigation and ATT&CK
+  coverage pages.
+- **Phases 4 and 5:** as in the table above.
 
 ## Data
 
 Beacon does not redistribute any dataset. `make data` downloads them from their
-original sources at a pinned commit and checks each file's SHA-256. See
+original sources at a pinned commit or archive record and checks each file's SHA-256. See
 [data/README.md](data/README.md) for sources and licences.
 
 ## Licence
