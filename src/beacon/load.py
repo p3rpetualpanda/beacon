@@ -104,7 +104,7 @@ def infer_offset_seconds(con: duckdb.DuckDBPyConnection) -> int | None:
         SELECT median(epoch(try_strptime(j->>'UtcTime', '%Y-%m-%d %H:%M:%S.%g'))
                       - epoch(try_strptime(coalesce(j->>'EventTime', j->>'TimeCreated'),
                                            ['%Y-%m-%d %H:%M:%S.%g', '%Y-%m-%d %H:%M:%S',
-                                            '%Y-%m-%dT%H:%M:%S.%gZ'])))
+                                            '%Y-%m-%dT%H:%M:%S.%gZ', '%Y-%m-%dT%H:%M:%SZ'])))
         FROM raw_stage
         """,
     )
