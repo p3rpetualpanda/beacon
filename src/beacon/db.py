@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import os
 from importlib import resources
 from pathlib import Path
 
 import duckdb
 
 DEFAULT_DB = Path("data/beacon.duckdb")
+MAX_THREADS = 8
 
 
 def read_sql(name: str) -> str:
@@ -20,5 +22,7 @@ def connect(path: Path | str = DEFAULT_DB) -> duckdb.DuckDBPyConnection:
     if str(path) != ":memory:":
         Path(path).parent.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect(str(path))
+    # With one thread per core (32 here), the Windows load needed over 25 GB and failed; 8 needs a few.
+    con.execute(f"SET threads = {min(os.cpu_count() or 1, MAX_THREADS)}")
     con.execute(read_sql("schema.sql"))
     return con
