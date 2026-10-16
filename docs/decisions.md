@@ -11,7 +11,7 @@ housekeeping logs (`loaded_scripts`, `stats`, `capture_loss`, `packet_filter`, `
 describe the sensor, not the network, and are counted as rejected.
 
 The Zeek captures do not overlap the host logs in time: day 1's network log covers
-2020-04-30 00:06-00:45 UTC and day 2's runs from 2020-05-01 07:02 to 2020-05-02 02:16, while the
+2020-04-30 00:06-00:45 UTC and day 2's 2020-05-01 07:02-07:34, while the
 host logs are from 2020-05-02 02:55-08:29. They look like a separate run of the same emulation,
 so network and host events can't be joined into one timeline; network rules use them alone.
 
@@ -49,6 +49,9 @@ written by hand and not run, because Beacon has no Sentinel workspace.
 Defender flags `dcsync_empire`, `net_localgroup_admins` and `schtasks_empire` as malware,
 because they are real attack logs carrying Empire's encoded PowerShell payloads. Each dataset
 was loaded once on Windows with Defender on; the four that raised no detection are kept.
+Seven more OTRF atomic datasets that don't use Empire (PurpleSharp, Covenant, Dumpert, Task
+Manager, sc.exe and remote schtasks) were downloaded and loaded the same way, one at a time,
+and all seven stayed clean.
 Beacon no longer downloads the three flagged ones; rules they would have exercised are covered
 by test events and the APT29 data instead.
 
@@ -66,6 +69,11 @@ Security events use `TimeCreated` on a 12-hour clock with no AM or PM. There the
 offset is +16 hours, which lines those events up with the file's Sysmon events. A quality
 check confirms that, on every host, Security and Sysmon events start within ten minutes of
 each other.
+
+Some later OTRF exports write `TimeCreated` as ISO text ending in `Z` even though it is
+local time: their Sysmon `UtcTime` is 5 hours later (remote schtasks) or 16 hours later (the
+fax service). The loader parses that form too and lets the Sysmon gap set the offset, rather
+than trusting the `Z`.
 
 **Why:** a hard-coded time zone would silently misplace any dataset recorded somewhere else,
 and detections that join events across sources (a logon followed by a process) depend on

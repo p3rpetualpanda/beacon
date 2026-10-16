@@ -237,7 +237,8 @@ def test_zeek_sample_loads_network_fields(con: duckdb.DuckDBPyConnection, tmp_pa
     dataset = make_dataset("zeek", format="zeek", path="zeek/z.log")
     result = load_dataset(con, dataset, raw, tmp_path / "interim")
     assert result is not None
-    assert (result.rows_read, result.rows_rejected, result.duplicates_dropped) == (17, 1, 1)
+    # One bad timestamp and one Zeek housekeeping (stats) record are rejected.
+    assert (result.rows_read, result.rows_rejected, result.duplicates_dropped) == (18, 2, 1)
     assert result.rows_loaded == 15
     rows = dict(
         con.execute(
@@ -259,3 +260,33 @@ def test_zeek_sample_loads_network_fields(con: duckdb.DuckDBPyConnection, tmp_pa
         "SELECT count(*) FROM events WHERE event_code = 'dns' AND dns_query IS NOT NULL"
     ).fetchone()
     assert queries == (4,)
+
+
+def test_iso_local_time_from_winlogbeat_exports(
+    con: duckdb.DuckDBPyConnection, tmp_path: Path
+) -> None:
+    # Some OTRF exports write local time as ISO with a Z; Sysmon's UtcTime shows the real offset.
+    records = [
+        {
+            "Channel": "Microsoft-Windows-Sysmon/Operational",
+            "EventID": 1,
+            "Hostname": "ws1",
+            "RecordNumber": 1,
+            "TimeCreated": "2020-12-19T06:59:29.977Z",
+            "UtcTime": "2020-12-19 11:59:29.976",
+        },
+        {
+            "Channel": "Security",
+            "EventID": 4698,
+            "Hostname": "ws1",
+            "RecordNumber": 2,
+            "TimeCreated": "2020-12-19T07:00:22.263Z",
+            "TaskName": "\\T1",
+        },
+    ]
+    path = tmp_path / "w.json"
+    path.write_text("".join(json.dumps(r) + "\n" for r in records), encoding="utf-8")
+    result = load_windows_json(con, make_dataset("winlogbeat"), path)
+    assert (result.rows_loaded, result.rows_rejected, result.ts_offset_hours) == (2, 0, 5)
+    ts = con.execute("SELECT ts FROM events WHERE event_code = '4698'").fetchone()
+    assert ts is not None and str(ts[0]) == "2020-12-19 12:00:22.263000"

@@ -153,7 +153,7 @@ def test_load_command(load_env: dict[str, Path], capsys: pytest.CaptureFixture[s
     assert cli.main(_load_args(load_env)) == 0
     out = capsys.readouterr().out
     assert "lsass  175 events (9 duplicates, 0 rejected, local time +16h)" in out
-    assert "zeek  15 events (1 duplicates, 1 rejected)" in out
+    assert "zeek  15 events (1 duplicates, 2 rejected)" in out
     assert "190 events loaded" in out
 
 
