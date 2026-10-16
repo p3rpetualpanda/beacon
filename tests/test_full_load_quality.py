@@ -22,11 +22,6 @@ pytestmark = pytest.mark.skipif(not DB.exists(), reason=f"{DB} not built; run `m
 EXPECTED = {
     "apt29_day1_host": (196_081, date(2020, 5, 2)),
     "apt29_day2_host": (587_286, date(2020, 5, 2)),
-    "lsass_dump_comsvcs": (184, date(2020, 10, 18)),
-    "psexec_empire": (4_348, date(2020, 9, 20)),
-    "wmi_exec_empire": (6_383, date(2020, 9, 21)),
-    "schtasks_empire": (1_297, date(2020, 9, 21)),
-    "run_keys_empire": (40_569, date(2020, 9, 4)),
 }
 
 
@@ -61,7 +56,7 @@ def test_every_record_is_accounted_for(con: duckdb.DuckDBPyConnection) -> None:
 
 def test_duplicates_match_the_profiled_count(con: duckdb.DuckDBPyConnection) -> None:
     quality = latest_quality(con)
-    assert sum(int(quality[name][2]) for name in EXPECTED) == 1_640
+    assert sum(int(quality[name][2]) for name in EXPECTED) == 1_631
 
 
 def test_events_table_matches_quality_log(con: duckdb.DuckDBPyConnection) -> None:

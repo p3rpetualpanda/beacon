@@ -28,11 +28,14 @@ inside an attack dataset, and it depends on the manifest's technique lists being
 and tests run every rule against known-good and known-bad events on every push. The KQL is
 written by hand and not run, because Beacon has no Sentinel workspace.
 
-## 2026-10-16: Drop datasets that Windows Defender quarantines
+## 2026-10-16: Drop the Empire atomic datasets, which Windows Defender quarantines
 
-Defender flags `dcsync_empire` and `net_localgroup_admins` as malware, because they are real
-attack logs. Beacon no longer downloads them; rules they would have exercised are covered by
-test events instead.
+Defender quarantined `dcsync_empire` and `net_localgroup_admins` as malware: they are real
+attack logs carrying Empire's encoded PowerShell payloads. The other five Empire-based atomic
+datasets (LSASS dump, PsExec, WMI, scheduled tasks, Run keys) carry the same kind of payload,
+so they were dropped too. Beacon now downloads only the APT29 evaluation data, which covers
+the same techniques, and rules are also proved by their own test events. The small LSASS
+sample committed in `tests/data/` (184 records) does not trigger Defender and is kept.
 
 **Why:** the project must run on a normal Windows PC without weakening its antivirus.
 
