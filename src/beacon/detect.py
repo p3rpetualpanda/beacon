@@ -123,7 +123,12 @@ def read_verdicts(path: Path) -> dict[str, tuple[str, str]]:
             raise RuleError(f"{path}: columns must be {', '.join(VERDICT_FIELDS)}")
         verdicts: dict[str, tuple[str, str]] = {}
         for row in reader:
+            # DictReader fills missing columns with None and gathers extra ones under None.
+            if None in row or None in row.values():
+                raise RuleError(f"{path}: line {reader.line_num} needs exactly 3 columns")
             alert_id, status = row["alert_id"].strip(), row["status"].strip()
+            if not alert_id:
+                raise RuleError(f"{path}: line {reader.line_num} has no alert_id")
             if alert_id in verdicts:
                 raise RuleError(f"{path}: alert {alert_id} is listed twice")
             # A file never sets 'new': run_rule deletes new alerts its rule no longer raises.
@@ -133,15 +138,18 @@ def read_verdicts(path: Path) -> dict[str, tuple[str, str]]:
     return verdicts
 
 
-def apply_verdicts(con: duckdb.DuckDBPyConnection, path: Path) -> tuple[int, list[str]]:
+def apply_verdicts(con: duckdb.DuckDBPyConnection, path: Path) -> tuple[int, list[str], list[str]]:
     """Give each listed alert its file verdict, unless it already has one in the database.
 
     The database wins over the file, so a verdict saved in the dashboard is never undone by
-    re-running detect; `export_verdicts` copies it into the file. Applied in one transaction.
-    Returns how many were applied and the ids of listed alerts that don't exist.
+    re-running detect; `export_verdicts` copies it into the file. That also means a corrected
+    file row does not change an alert that already has a verdict: it is reported as a conflict,
+    to be fixed in the dashboard (or by rebuilding the database). Applied in one transaction.
+    Returns how many were applied, the ids of listed alerts that don't exist, and the ids whose
+    database verdict differs from the file.
     """
     verdicts = read_verdicts(path)
-    applied, missing = 0, []
+    applied, missing, conflicts = 0, list[str](), list[str]()
     con.execute("BEGIN TRANSACTION")
     try:
         for alert_id, (status, _) in verdicts.items():
@@ -151,11 +159,13 @@ def apply_verdicts(con: duckdb.DuckDBPyConnection, path: Path) -> tuple[int, lis
             elif row[0] == "new":
                 set_alert_status(con, alert_id, status)
                 applied += 1
+            elif row[0] != status:
+                conflicts.append(alert_id)
         con.execute("COMMIT")
     except Exception:
         con.execute("ROLLBACK")
         raise
-    return applied, missing
+    return applied, missing, conflicts
 
 
 def export_verdicts(con: duckdb.DuckDBPyConnection, path: Path) -> int:
@@ -170,9 +180,12 @@ def export_verdicts(con: duckdb.DuckDBPyConnection, path: Path) -> int:
     ).fetchall():
         verdicts[alert_id] = (status, verdicts.get(alert_id, ("", ""))[1])
     tmp = path.with_suffix(path.suffix + ".tmp")
-    with tmp.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.writer(handle, lineterminator="\n")
-        writer.writerow(VERDICT_FIELDS)
-        writer.writerows([a, s, r] for a, (s, r) in sorted(verdicts.items()))
-    tmp.replace(path)
+    try:
+        with tmp.open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.writer(handle, lineterminator="\n")
+            writer.writerow(VERDICT_FIELDS)
+            writer.writerows([a, s, r] for a, (s, r) in sorted(verdicts.items()))
+        tmp.replace(path)  # fails on Windows if the file is open elsewhere; the old one stays
+    finally:
+        tmp.unlink(missing_ok=True)
     return len(verdicts)

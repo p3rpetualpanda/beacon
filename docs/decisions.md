@@ -15,8 +15,9 @@ The first verdicts: three R05 Empire stagers and R09's APT29 day 2 Run key are t
 which the labels missed; R12's three log clears (each the first event of its recording, the lab
 resetting) and R16's discovery burst (a cscript diagnostics collector) are false positives.
 APT29 day 1's label list gained T1543.003 and T1547.001, both named in OTRF's emulation plan.
-R16 now ignores the Azure VM agent's own ipconfig, arp and route runs, but only from its real
-`C:\WindowsAzure\` folder.
+R16 now ignores the Azure VM agent's own ipconfig, arp and route runs (those three commands
+only), and only from its real `C:\WindowsAzure\` folder. A corrected file row doesn't change an
+alert that already has a verdict in the database; `make detect` lists those conflicts.
 
 **Why:** a label says what a dataset contains, not whether one alert is the attack, so it can't
 tell an Empire stager from lab noise. Keeping verdicts in git, with reasons, makes every

@@ -74,9 +74,10 @@ on. CI runs every rule against both. `make detect` writes hits to `alerts` and p
 Precision uses an analyst's verdict where there is one, and otherwise counts a hit as true when
 its dataset is documented to contain the rule's technique (the data has no per-event attack
 labels). Verdicts are reviewed by hand and kept in
-[`detections/verdicts.csv`](detections/verdicts.csv), each with its reason, so `make detect`
-rebuilds the same numbers from scratch; `beacon export-verdicts` copies verdicts saved in the
-dashboard into that file. R12's three alerts are the lab clearing its logs in the first second
+[`detections/verdicts.csv`](detections/verdicts.csv), each with its reason, so `make detect` on
+a freshly built database gives the same numbers. `beacon export-verdicts` copies verdicts saved
+in the dashboard into that file. On an existing database a verdict already saved wins over the
+file, and `make detect` lists any that differ. R12's three alerts are the lab clearing its logs in the first second
 of each recording, and R16's is a Windows diagnostics collector, so both score 0% on this data.
 Rules at zero have no matching behaviour in the data yet; their test events show they work.
 See [docs/decisions.md](docs/decisions.md).

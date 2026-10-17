@@ -165,7 +165,7 @@ def _detect(db_path: Path, rules_dir: Path, only: list[str] | None, verdicts: Pa
                 detect_mod.run_rule(con, rule)
         if verdicts.exists():
             try:
-                applied, missing = detect_mod.apply_verdicts(con, verdicts)
+                applied, missing, conflicts = detect_mod.apply_verdicts(con, verdicts)
             except (ValueError, OSError, csv.Error) as exc:
                 print(f"cannot apply verdicts: {exc}", file=sys.stderr)
                 return 2
@@ -173,6 +173,12 @@ def _detect(db_path: Path, rules_dir: Path, only: list[str] | None, verdicts: Pa
             if missing:
                 print(
                     f"verdicts for alerts no longer raised: {', '.join(missing)}", file=sys.stderr
+                )
+            if conflicts:
+                print(
+                    f"file verdicts not applied, the database already has a different one: "
+                    f"{', '.join(conflicts)}",
+                    file=sys.stderr,
                 )
         rows = con.execute(
             "SELECT rule_id, name, hits, precision FROM rule_performance "

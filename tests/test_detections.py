@@ -52,7 +52,7 @@ def test_rule_is_quiet_on_negative_fixture(con: duckdb.DuckDBPyConnection, rule:
 # Positive fixtures that log one launch in both Sysmon and Security 4688 must alert once per
 # launch, and each extra case (renamed tool, quoted payload, task under Microsoft) must fire.
 @pytest.mark.parametrize(
-    ("rule_id", "alerts"), [("R03", 3), ("R05", 3), ("R06", 2), ("R07", 3), ("R16", 2)]
+    ("rule_id", "alerts"), [("R03", 3), ("R05", 3), ("R06", 2), ("R07", 3), ("R16", 3)]
 )
 def test_positive_fixture_alert_counts(
     con: duckdb.DuckDBPyConnection, rule_id: str, alerts: int
@@ -177,12 +177,12 @@ def test_verdicts_round_trip_through_a_file(con: duckdb.DuckDBPyConnection, tmp_
         f"alert_id,status,reason\n{alert_id},true_positive,dumpert\ngone,closed,\n",
         encoding="utf-8",
     )
-    assert apply_verdicts(con, path) == (1, ["gone"])
+    assert apply_verdicts(con, path) == (1, ["gone"], [])
     assert con.execute("SELECT status FROM alerts").fetchall() == [("true_positive",)]
 
     # A verdict saved later in the dashboard wins over the file on the next detect run...
     con.execute("UPDATE alerts SET status = 'false_positive'")
-    assert apply_verdicts(con, path) == (0, ["gone"])
+    assert apply_verdicts(con, path) == (0, ["gone"], [alert_id])
     assert con.execute("SELECT status FROM alerts").fetchall() == [("false_positive",)]
 
     # ...and export copies it into the file, keeping reasons and rows for other databases.
@@ -201,7 +201,7 @@ def test_verdict_files_saved_by_excel_are_read(
     (alert_id,) = con.execute("SELECT alert_id FROM alerts").fetchone() or ("",)
     path = tmp_path / "verdicts.csv"
     path.write_bytes(f"﻿alert_id,status,reason\r\n {alert_id} , closed ,x\r\n".encode())
-    assert apply_verdicts(con, path) == (1, [])
+    assert apply_verdicts(con, path) == (1, [], [])
     assert con.execute("SELECT status FROM alerts").fetchall() == [("closed",)]
 
 
@@ -212,6 +212,9 @@ def test_verdict_files_saved_by_excel_are_read(
         ("alert_id,status,reason\nx,pwned,\n", "invalid status"),
         ("alert_id,status,reason\nx,new,\n", "invalid status"),
         ("alert_id,status,reason\nx,closed,\nx,triaged,\n", "listed twice"),
+        ("alert_id,status,reason\nx,closed\n", "exactly 3 columns"),
+        ("alert_id,status,reason\nx,closed,a,b\n", "exactly 3 columns"),
+        ("alert_id,status,reason\n ,closed,\n", "no alert_id"),
     ],
 )
 def test_apply_verdicts_rejects_bad_files(
