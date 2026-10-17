@@ -7,6 +7,7 @@ ts, dataset, host_name, user_name, summary and event_ids (the evidence, as VARCH
 
 from __future__ import annotations
 
+import csv
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,9 +15,13 @@ from pathlib import Path
 import duckdb
 import yaml
 
+from beacon.dashboard import STATUSES, set_alert_status
 from beacon.ingest.fetch import TECHNIQUE_RE
 
 DEFAULT_RULES_DIR = Path("detections")
+# Reviewed analyst verdicts, kept in git so precision can be rebuilt from scratch.
+DEFAULT_VERDICTS = DEFAULT_RULES_DIR / "verdicts.csv"
+VERDICT_FIELDS = ["alert_id", "status", "reason"]
 SEVERITIES = ("low", "medium", "high", "critical")
 RULE_ID_RE = re.compile(r"^R\d{2}$")
 FIELDS = ("id", "name", "technique", "tactic", "severity", "description")
@@ -107,3 +112,80 @@ def run_rule(con: duckdb.DuckDBPyConnection, rule: Rule) -> int:
         con.execute("ROLLBACK")
         raise
     return int(count)
+
+
+def read_verdicts(path: Path) -> dict[str, tuple[str, str]]:
+    """Read a verdicts file into {alert_id: (status, reason)}, rejecting anything ambiguous."""
+    # utf-8-sig: a file saved from Excel on Windows starts with a byte-order mark.
+    with path.open(newline="", encoding="utf-8-sig") as handle:
+        reader = csv.DictReader(handle)
+        if reader.fieldnames != VERDICT_FIELDS:
+            raise RuleError(f"{path}: columns must be {', '.join(VERDICT_FIELDS)}")
+        verdicts: dict[str, tuple[str, str]] = {}
+        for row in reader:
+            # DictReader fills missing columns with None and gathers extra ones under None.
+            if None in row or None in row.values():
+                raise RuleError(f"{path}: line {reader.line_num} needs exactly 3 columns")
+            alert_id, status = row["alert_id"].strip(), row["status"].strip()
+            if not alert_id:
+                raise RuleError(f"{path}: line {reader.line_num} has no alert_id")
+            if alert_id in verdicts:
+                raise RuleError(f"{path}: alert {alert_id} is listed twice")
+            # A file never sets 'new': run_rule deletes new alerts its rule no longer raises.
+            if status not in STATUSES or status == "new":
+                raise RuleError(f"{path}: alert {alert_id} has an invalid status {status!r}")
+            verdicts[alert_id] = (status, row["reason"].strip())
+    return verdicts
+
+
+def apply_verdicts(con: duckdb.DuckDBPyConnection, path: Path) -> tuple[int, list[str], list[str]]:
+    """Give each listed alert its file verdict, unless it already has one in the database.
+
+    The database wins over the file, so a verdict saved in the dashboard is never undone by
+    re-running detect; `export_verdicts` copies it into the file. That also means a corrected
+    file row does not change an alert that already has a verdict: it is reported as a conflict,
+    to be fixed in the dashboard (or by rebuilding the database). Applied in one transaction.
+    Returns how many were applied, the ids of listed alerts that don't exist, and the ids whose
+    database verdict differs from the file.
+    """
+    verdicts = read_verdicts(path)
+    applied, missing, conflicts = 0, list[str](), list[str]()
+    con.execute("BEGIN TRANSACTION")
+    try:
+        for alert_id, (status, _) in verdicts.items():
+            row = con.execute("SELECT status FROM alerts WHERE alert_id = ?", [alert_id]).fetchone()
+            if row is None:
+                missing.append(alert_id)
+            elif row[0] == "new":
+                set_alert_status(con, alert_id, status)
+                applied += 1
+            elif row[0] != status:
+                conflicts.append(alert_id)
+        con.execute("COMMIT")
+    except Exception:
+        con.execute("ROLLBACK")
+        raise
+    return applied, missing, conflicts
+
+
+def export_verdicts(con: duckdb.DuckDBPyConnection, path: Path) -> int:
+    """Merge the database's verdicts into path and return how many the file now holds.
+
+    Rows already in the file are kept (even for alerts not in this database) with their
+    reasons; the database's status wins where both have one. The file is replaced in one step.
+    """
+    verdicts = read_verdicts(path) if path.exists() else {}
+    for alert_id, status in con.execute(
+        "SELECT alert_id, status FROM alerts WHERE status <> 'new'"
+    ).fetchall():
+        verdicts[alert_id] = (status, verdicts.get(alert_id, ("", ""))[1])
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    try:
+        with tmp.open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.writer(handle, lineterminator="\n")
+            writer.writerow(VERDICT_FIELDS)
+            writer.writerows([a, s, r] for a, (s, r) in sorted(verdicts.items()))
+        tmp.replace(path)  # fails on Windows if the file is open elsewhere; the old one stays
+    finally:
+        tmp.unlink(missing_ok=True)
+    return len(verdicts)

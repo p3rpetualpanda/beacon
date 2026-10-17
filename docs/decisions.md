@@ -2,6 +2,27 @@
 
 Short records of design choices and why they were made, newest first.
 
+## 2026-10-17: Analyst verdicts decide precision, kept in a reviewed file
+
+`rule_performance` counts an alert marked `true_positive` or `false_positive` as such, and uses
+the dataset's technique labels only for alerts nobody has judged (`triaged` and `closed` fall
+back to the labels too). Verdicts live in `detections/verdicts.csv` with a reason for each,
+and `beacon detect` applies them after running the rules. A verdict already in the database
+wins over the file, so re-running detect never undoes one saved in the dashboard;
+`beacon export-verdicts` merges those back into the file.
+
+The first verdicts: three R05 Empire stagers and R09's APT29 day 2 Run key are true positives,
+which the labels missed; R12's three log clears (each the first event of its recording, the lab
+resetting) and R16's discovery burst (a cscript diagnostics collector) are false positives.
+APT29 day 1's label list gained T1543.003 and T1547.001, both named in OTRF's emulation plan.
+R16 now ignores the Azure VM agent's own ipconfig, arp and route runs (those three commands
+only), and only from its real `C:\WindowsAzure\` folder. A corrected file row doesn't change an
+alert that already has a verdict in the database; `make detect` lists those conflicts.
+
+**Why:** a label says what a dataset contains, not whether one alert is the attack, so it can't
+tell an Empire stager from lab noise. Keeping verdicts in git, with reasons, makes every
+precision figure reproducible and reviewable.
+
 ## 2026-10-16: Load the APT29 Zeek logs as their own records
 
 OTRF ships every Zeek log type for a day in one JSON file. Each record becomes one `events` row

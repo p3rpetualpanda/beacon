@@ -19,6 +19,13 @@ WITH discovery AS (
           'tasklist.exe', 'hostname.exe', 'quser.exe', 'qwinsta.exe', 'netstat.exe', 'arp.exe',
           'route.exe', 'dsquery.exe'
       )
+      -- Tuned: the Azure VM agent runs ipconfig, arp and route itself for diagnostics. Only its
+      -- real install folder is trusted, so a tool renamed to look like the agent still counts.
+      AND NOT (
+          process_name IN ('ipconfig.exe', 'arp.exe', 'route.exe')
+          AND coalesce(parent_process_name, '') IN ('windowsazureguestagent.exe', 'waappagent.exe')
+          AND regexp_matches(coalesce(parent_process_path, ''), '(?i)^c:\\windowsazure\\')
+      )
 ),
 bursts AS (
     SELECT
