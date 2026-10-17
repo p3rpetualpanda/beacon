@@ -29,15 +29,23 @@ def connection() -> duckdb.DuckDBPyConnection:
     return duckdb.connect(str(DB_PATH), read_only=True)
 
 
-def save_verdict(alert_id: str, status: str) -> None:
-    """Swap the read-only connection for a short read-write one, just for the update."""
+def save_verdict(alert_id: str, status: str) -> str | None:
+    """Swap the read-only connection for a short read-write one, just for the update.
+
+    Returns an error message when the verdict was not saved.
+    """
     connection().close()
     connection.clear()
-    con = db.connect(DB_PATH)
     try:
-        dashboard.set_alert_status(con, alert_id, status)
+        con = db.connect(DB_PATH)
+    except duckdb.Error:
+        return "Verdict not saved: another program has the database open. Close it and retry."
+    try:
+        if not dashboard.set_alert_status(con, alert_id, status):
+            return "Verdict not saved: the alert no longer exists. Re-run make detect?"
     finally:
         con.close()
+    return None
 
 
 def overview(con: duckdb.DuckDBPyConnection) -> None:
@@ -107,7 +115,7 @@ def alert_queue(con: duckdb.DuckDBPyConnection) -> None:
 
     alert = queue[rows[0]]
     st.subheader(f"{alert['rule_id']}: {alert['rule']}")
-    st.write(alert["summary"])
+    st.text(alert["summary"])  # log text, so never rendered as Markdown
     current = list(STATUS_LABELS).index(alert["status"])
     verdict = st.radio(
         "Verdict",
@@ -115,14 +123,18 @@ def alert_queue(con: duckdb.DuckDBPyConnection) -> None:
         index=current,
         horizontal=True,
         format_func=STATUS_LABELS.get,
+        key=f"verdict-{alert['alert_id']}",
     )
     st.caption(
         "An alert set back to New is removed on the next `make detect` if its rule no "
         "longer fires; any other verdict is kept."
     )
     if verdict != alert["status"] and st.button("Save verdict"):
-        save_verdict(alert["alert_id"], verdict)
-        st.rerun()
+        error = save_verdict(alert["alert_id"], verdict)
+        if error:
+            st.error(error)
+        else:
+            st.rerun()
 
     st.subheader("Evidence")
     evidence = dashboard.alert_evidence(con, alert["alert_id"])

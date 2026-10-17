@@ -85,12 +85,13 @@ optional `dashboard` dependency group on first run, so CI and `make check` stay 
 - **Overview:** alert and event totals, alerts by severity and status, the noisiest rules with
   their precision, and the events loaded per dataset.
 - **Alert queue:** alerts newest first, filtered by status and rule. Selecting one shows its
-  evidence events and lets an analyst record a verdict (triaged, true positive, false positive
-  or closed).
+  evidence events and lets an analyst record a verdict (new, triaged, true positive, false
+  positive or closed).
 
-The dashboard opens the database read-only and takes a short write lock only to save a verdict,
-so `make quality` and other readers work while it runs. Stop it before `make load` or
-`make detect`, which need to write.
+The dashboard opens the database read-only, so `make quality` and other readers work while it
+runs. Saving a verdict briefly needs the database to itself, so it fails with a message while
+another program has it open. Stop the dashboard before `make load` or `make detect`, which
+need to write.
 
 ## Roadmap
 

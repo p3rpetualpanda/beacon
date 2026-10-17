@@ -15,9 +15,12 @@ EVIDENCE_LIMIT = 200
 
 
 def _rows(con: duckdb.DuckDBPyConnection, sql: str, params: object = None) -> list[dict[str, Any]]:
-    cursor = con.execute(sql, params)
-    names = [d[0] for d in cursor.description or []]
-    return [dict(zip(names, row, strict=True)) for row in cursor.fetchall()]
+    # A cursor per query: Streamlit sessions share one connection across threads, and results
+    # read back from the shared connection itself can belong to another thread's query.
+    with con.cursor() as cursor:
+        cursor.execute(sql, params)
+        names = [d[0] for d in cursor.description or []]
+        return [dict(zip(names, row, strict=True)) for row in cursor.fetchall()]
 
 
 def alerts_by_severity(con: duckdb.DuckDBPyConnection) -> list[dict[str, Any]]:

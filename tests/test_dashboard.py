@@ -96,3 +96,21 @@ def test_evidence_counts_distinct_existing_events(alerting: duckdb.DuckDBPyConne
     assert row["evidence"] == 2
     evidence = dashboard.alert_evidence(alerting, "dup")
     assert [e["event_id"] for e in evidence] == ["R03fixture-1", "R03fixture-2"]
+
+
+def test_queries_from_two_threads_get_their_own_results(
+    alerting: duckdb.DuckDBPyConnection,
+) -> None:
+    # Streamlit shares one connection between browser sessions, each in its own thread.
+    from concurrent.futures import ThreadPoolExecutor
+
+    def queue_keys() -> set[str]:
+        return {k for _ in range(200) for row in dashboard.alert_queue(alerting) for k in row}
+
+    def severity_keys() -> set[str]:
+        return {k for _ in range(200) for r in dashboard.alerts_by_severity(alerting) for k in r}
+
+    with ThreadPoolExecutor(2) as pool:
+        queue, severity = pool.submit(queue_keys), pool.submit(severity_keys)
+        assert "summary" in queue.result() and "rule_id" in queue.result()
+        assert severity.result() == {"severity", "alerts"}
