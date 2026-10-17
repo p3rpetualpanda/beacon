@@ -32,6 +32,8 @@ def connection() -> duckdb.DuckDBPyConnection:
 def save_verdict(alert_id: str, status: str) -> str | None:
     """Swap the read-only connection for a short read-write one, just for the update.
 
+    The dashboard is a single-analyst local tool: the swap closes the connection every browser
+    tab shares, so another tab mid-query at that moment shows an error and needs a refresh.
     Returns an error message when the verdict was not saved.
     """
     connection().close()

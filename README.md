@@ -89,7 +89,7 @@ optional `dashboard` dependency group on first run, so CI and `make check` stay 
   positive or closed).
 
 The dashboard opens the database read-only, so `make quality` and other readers work while it
-runs. Saving a verdict briefly needs the database to itself, so it fails with a message while
+runs. It is meant for one analyst at a time. Saving a verdict briefly needs the database to itself, so it fails with a message while
 another program has it open. Stop the dashboard before `make load` or `make detect`, which
 need to write.
 
