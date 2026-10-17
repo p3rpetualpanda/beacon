@@ -6,8 +6,8 @@ mapped to [MITRE ATT&CK](https://attack.mitre.org/), scores unusual activity wit
 machine learning, and reports the results on a SOC dashboard.
 
 > **Status:** Phase 2 in progress. Beacon loads 1,058,365 Windows, network and SSH events
-> into one normalised table and runs 12 ATT&CK-mapped detection rules over them. The SOC
-> dashboard is next (see the roadmap).
+> into one normalised table, runs 12 ATT&CK-mapped detection rules over them, and shows the
+> alerts on a SOC dashboard (see the roadmap).
 
 ## Quick start
 
@@ -20,6 +20,7 @@ make data      # download the pinned public datasets into data/raw/ and verify c
 make load      # normalise them into data/beacon.duckdb (a few minutes)
 make quality   # data-quality checks on the full database
 make detect    # run the detection rules; prints alerts and precision per rule
+make dashboard # SOC dashboard at http://localhost:8501 (overview and alert queue)
 ```
 
 SSH logins from a Linux server can be loaded too:
@@ -76,21 +77,37 @@ incomplete technique lists (R05's Empire launchers, R09's APT29 Run key) and can
 setup from the attack (R12). Rules at zero have no matching behaviour in the data yet; their
 test events show they work. See [docs/decisions.md](docs/decisions.md).
 
+## Dashboard
+
+`make dashboard` starts a Streamlit app on your machine only (localhost:8501). It installs the
+optional `dashboard` dependency group on first run, so CI and `make check` stay light.
+
+- **Overview:** alert and event totals, alerts by severity and status, the noisiest rules with
+  their precision, and the events loaded per dataset.
+- **Alert queue:** alerts newest first, filtered by status and rule. Selecting one shows its
+  evidence events and lets an analyst record a verdict (new, triaged, true positive, false
+  positive or closed).
+
+The dashboard opens the database read-only, so `make quality` and other readers work while it
+runs. It is meant for one analyst at a time. Saving a verdict briefly needs the database to itself, so it fails with a message while
+another program has it open. Stop the dashboard before `make load` or `make detect`, which
+need to write.
+
 ## Roadmap
 
 | Phase | Scope | Status |
 | --- | --- | --- |
 | 0 | Repo, tooling, CI, dataset downloader | Done |
 | 1 | Parsers and a normalised `events` table in DuckDB | Done |
-| 2 | 12 ATT&CK-mapped SQL detections with KQL equivalents; dashboard v1 | Rules done; dashboard to do |
+| 2 | 12 ATT&CK-mapped SQL detections with KQL equivalents; dashboard v1 | Rules and dashboard done; tuning to do |
 | 3 | Zeek network logs, 8 more detections, investigation pages | Zeek logs loaded; rules and pages to do |
 | 4 | Anomaly detection (robust z-score, Isolation Forest, LOF) and risk scoring | Planned |
 | 5 | Power BI report, incident report, Docker, demo | Planned |
 
 ### Still to do
 
-- **Phase 2:** Streamlit overview and alert-queue pages, and a second pass on the noisiest
-  rules (R12 fires on lab setup; R05 and R09 need better labels to score fairly).
+- **Phase 2:** a tuning pass: score precision from analyst verdicts first, fill missing
+  technique labels from their sources, and mark R12's lab-setup log clears.
 - **Phase 3:** rules R04, R10, R11, R14, R15, R17, R18 and R19 (the network rules can use the
   Zeek logs, which don't overlap the host logs in time), plus investigation and ATT&CK
   coverage pages.

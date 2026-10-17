@@ -1,4 +1,4 @@
-.PHONY: install lint typecheck security test check data load detect quality clean
+.PHONY: install lint typecheck security test check data load detect dashboard quality clean
 
 install:
 	uv sync
@@ -27,6 +27,9 @@ load: data
 
 detect:
 	uv run beacon detect
+
+dashboard:
+	uv run --group dashboard streamlit run app/streamlit_app.py --server.address localhost
 
 quality:
 	uv run pytest tests/test_full_load_quality.py --no-cov -v
