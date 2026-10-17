@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import sys
 from collections.abc import Sequence
 from datetime import UTC, tzinfo
@@ -165,7 +166,7 @@ def _detect(db_path: Path, rules_dir: Path, only: list[str] | None, verdicts: Pa
         if verdicts.exists():
             try:
                 applied, missing = detect_mod.apply_verdicts(con, verdicts)
-            except (ValueError, OSError) as exc:
+            except (ValueError, OSError, csv.Error) as exc:
                 print(f"cannot apply verdicts: {exc}", file=sys.stderr)
                 return 2
             print(f"applied {applied} verdicts from {verdicts}")
@@ -190,9 +191,12 @@ def _export_verdicts(db_path: Path, out: Path) -> int:
     con = db.connect(db_path)
     try:
         count = detect_mod.export_verdicts(con, out)
+    except (ValueError, OSError, csv.Error) as exc:
+        print(f"cannot export verdicts: {exc}", file=sys.stderr)
+        return 2
     finally:
         con.close()
-    print(f"{count} verdicts written to {out}")
+    print(f"{count} verdicts in {out}")
     return 0
 
 

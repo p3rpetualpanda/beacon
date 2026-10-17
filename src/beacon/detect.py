@@ -114,31 +114,65 @@ def run_rule(con: duckdb.DuckDBPyConnection, rule: Rule) -> int:
     return int(count)
 
 
-def apply_verdicts(con: duckdb.DuckDBPyConnection, path: Path) -> tuple[int, list[str]]:
-    """Set alert statuses from a verdicts file. Returns how many applied and the ids not found."""
-    with path.open(newline="", encoding="utf-8") as handle:
+def read_verdicts(path: Path) -> dict[str, tuple[str, str]]:
+    """Read a verdicts file into {alert_id: (status, reason)}, rejecting anything ambiguous."""
+    # utf-8-sig: a file saved from Excel on Windows starts with a byte-order mark.
+    with path.open(newline="", encoding="utf-8-sig") as handle:
         reader = csv.DictReader(handle)
         if reader.fieldnames != VERDICT_FIELDS:
             raise RuleError(f"{path}: columns must be {', '.join(VERDICT_FIELDS)}")
-        rows = list(reader)
-    bad = [r["alert_id"] for r in rows if r["status"] not in STATUSES]
-    if bad:
-        raise RuleError(f"{path}: unknown status for {', '.join(bad)}")
-    missing = [r["alert_id"] for r in rows if not set_alert_status(con, r["alert_id"], r["status"])]
-    return len(rows) - len(missing), missing
+        verdicts: dict[str, tuple[str, str]] = {}
+        for row in reader:
+            alert_id, status = row["alert_id"].strip(), row["status"].strip()
+            if alert_id in verdicts:
+                raise RuleError(f"{path}: alert {alert_id} is listed twice")
+            # A file never sets 'new': run_rule deletes new alerts its rule no longer raises.
+            if status not in STATUSES or status == "new":
+                raise RuleError(f"{path}: alert {alert_id} has an invalid status {status!r}")
+            verdicts[alert_id] = (status, row["reason"].strip())
+    return verdicts
+
+
+def apply_verdicts(con: duckdb.DuckDBPyConnection, path: Path) -> tuple[int, list[str]]:
+    """Give each listed alert its file verdict, unless it already has one in the database.
+
+    The database wins over the file, so a verdict saved in the dashboard is never undone by
+    re-running detect; `export_verdicts` copies it into the file. Applied in one transaction.
+    Returns how many were applied and the ids of listed alerts that don't exist.
+    """
+    verdicts = read_verdicts(path)
+    applied, missing = 0, []
+    con.execute("BEGIN TRANSACTION")
+    try:
+        for alert_id, (status, _) in verdicts.items():
+            row = con.execute("SELECT status FROM alerts WHERE alert_id = ?", [alert_id]).fetchone()
+            if row is None:
+                missing.append(alert_id)
+            elif row[0] == "new":
+                set_alert_status(con, alert_id, status)
+                applied += 1
+        con.execute("COMMIT")
+    except Exception:
+        con.execute("ROLLBACK")
+        raise
+    return applied, missing
 
 
 def export_verdicts(con: duckdb.DuckDBPyConnection, path: Path) -> int:
-    """Write every alert with a status other than new to path, keeping reasons already there."""
-    reasons: dict[str, str] = {}
-    if path.exists():
-        with path.open(newline="", encoding="utf-8") as handle:
-            reasons = {r["alert_id"]: r["reason"] for r in csv.DictReader(handle)}
-    rows = con.execute(
-        "SELECT alert_id, status FROM alerts WHERE status <> 'new' ORDER BY rule_id, alert_id"
-    ).fetchall()
-    with path.open("w", newline="", encoding="utf-8") as handle:
+    """Merge the database's verdicts into path and return how many the file now holds.
+
+    Rows already in the file are kept (even for alerts not in this database) with their
+    reasons; the database's status wins where both have one. The file is replaced in one step.
+    """
+    verdicts = read_verdicts(path) if path.exists() else {}
+    for alert_id, status in con.execute(
+        "SELECT alert_id, status FROM alerts WHERE status <> 'new'"
+    ).fetchall():
+        verdicts[alert_id] = (status, verdicts.get(alert_id, ("", ""))[1])
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with tmp.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle, lineterminator="\n")
         writer.writerow(VERDICT_FIELDS)
-        writer.writerows([alert_id, status, reasons.get(alert_id, "")] for alert_id, status in rows)
-    return len(rows)
+        writer.writerows([a, s, r] for a, (s, r) in sorted(verdicts.items()))
+    tmp.replace(path)
+    return len(verdicts)

@@ -12,7 +12,10 @@ datasets:
     licence: MIT
     source: OTRF Security-Datasets
     format: otrf_windows
-    attack_techniques: [T1204.002, T1036.002, T1059.001, T1071.001, T1113, T1560.001, T1003.001, T1548.002, T1082, T1057]
+    # T1543.003 and T1547.001: steps 5.A, 5.B and 10 of OTRF's APT29 emulation plan
+    # (datasets/compound/apt29/emulationplans/apt29.xlsx at the same commit): a new service and
+    # "Registry Run Keys / Startup Folder" persistence.
+    attack_techniques: [T1204.002, T1036.002, T1059.001, T1071.001, T1113, T1560.001, T1003.001, T1548.002, T1082, T1057, T1543.003, T1547.001]
 
   - name: apt29_day2_host
     description: "APT29 ATT&CK evaluation, day 2: Windows host logs"

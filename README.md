@@ -5,7 +5,7 @@ real attack logs from public datasets, detects attacker behaviour with SQL rules
 mapped to [MITRE ATT&CK](https://attack.mitre.org/), scores unusual activity with
 machine learning, and reports the results on a SOC dashboard.
 
-> **Status:** Phase 2 in progress. Beacon loads 1,058,365 Windows, network and SSH events
+> **Status:** Phase 2 done; Phase 3 next. Beacon loads 1,058,365 Windows, network and SSH events
 > into one normalised table, runs 12 ATT&CK-mapped detection rules over them, and shows the
 > alerts on a SOC dashboard (see the roadmap).
 
@@ -56,26 +56,30 @@ Each rule lives in [`detections/`](detections/) as SQL over `events`, a hand-wri
 Sentinel KQL version, and two sets of test events: one it must fire on, one it must stay quiet
 on. CI runs every rule against both. `make detect` writes hits to `alerts` and prints, per rule:
 
-| Rule | ATT&CK | Alerts on the full data | Precision |
-| --- | --- | ---: | ---: |
-| R01 Brute force then success | T1110.001 | 0 | – |
-| R02 Password spraying | T1110.003 | 0 | – |
-| R03 LSASS memory access | T1003.001 | 12 | 100% |
-| R05 Encoded PowerShell | T1059.001 | 9 | 67% |
-| R06 Office app spawns a shell | T1204.002 | 0 | – |
-| R07 Scheduled task created | T1053.005 | 2 | 100% |
-| R08 New service from a user-writable path | T1543.003 | 0 | – |
-| R09 Run key persistence | T1547.001 | 2 | 50% |
-| R12 Security log cleared | T1070.001 | 3 | 0% |
-| R13 New local admin | T1136.001 | 0 | – |
-| R16 Discovery burst | T1087.002 | 1 | 0% |
-| R20 SSH brute force (Linux) | T1110.001 | 515 | 100% |
+| Rule | ATT&CK | Alerts on the full data | Precision | Analyst verdicts |
+| --- | --- | ---: | ---: | ---: |
+| R01 Brute force then success | T1110.001 | 0 | – | 0 |
+| R02 Password spraying | T1110.003 | 0 | – | 0 |
+| R03 LSASS memory access | T1003.001 | 12 | 100% | 0 |
+| R05 Encoded PowerShell | T1059.001 | 9 | 100% | 3 |
+| R06 Office app spawns a shell | T1204.002 | 0 | – | 0 |
+| R07 Scheduled task created | T1053.005 | 2 | 100% | 0 |
+| R08 New service from a user-writable path | T1543.003 | 0 | – | 0 |
+| R09 Run key persistence | T1547.001 | 2 | 100% | 1 |
+| R12 Security log cleared | T1070.001 | 3 | 0% | 3 |
+| R13 New local admin | T1136.001 | 0 | – | 0 |
+| R16 Discovery burst | T1087.002 | 1 | 0% | 1 |
+| R20 SSH brute force (Linux) | T1110.001 | 515 | 100% | 0 |
 
-Precision counts a hit as true when its dataset is documented to contain the rule's technique,
-because the data has no per-event attack labels. That undercounts real attacks in datasets with
-incomplete technique lists (R05's Empire launchers, R09's APT29 Run key) and can't separate lab
-setup from the attack (R12). Rules at zero have no matching behaviour in the data yet; their
-test events show they work. See [docs/decisions.md](docs/decisions.md).
+Precision uses an analyst's verdict where there is one, and otherwise counts a hit as true when
+its dataset is documented to contain the rule's technique (the data has no per-event attack
+labels). Verdicts are reviewed by hand and kept in
+[`detections/verdicts.csv`](detections/verdicts.csv), each with its reason, so `make detect`
+rebuilds the same numbers from scratch; `beacon export-verdicts` copies verdicts saved in the
+dashboard into that file. R12's three alerts are the lab clearing its logs in the first second
+of each recording, and R16's is a Windows diagnostics collector, so both score 0% on this data.
+Rules at zero have no matching behaviour in the data yet; their test events show they work.
+See [docs/decisions.md](docs/decisions.md).
 
 ## Dashboard
 
@@ -99,15 +103,13 @@ need to write.
 | --- | --- | --- |
 | 0 | Repo, tooling, CI, dataset downloader | Done |
 | 1 | Parsers and a normalised `events` table in DuckDB | Done |
-| 2 | 12 ATT&CK-mapped SQL detections with KQL equivalents; dashboard v1 | Rules and dashboard done; tuning to do |
+| 2 | 12 ATT&CK-mapped SQL detections with KQL equivalents; dashboard v1 | Done |
 | 3 | Zeek network logs, 8 more detections, investigation pages | Zeek logs loaded; rules and pages to do |
 | 4 | Anomaly detection (robust z-score, Isolation Forest, LOF) and risk scoring | Planned |
 | 5 | Power BI report, incident report, Docker, demo | Planned |
 
 ### Still to do
 
-- **Phase 2:** a tuning pass: score precision from analyst verdicts first, fill missing
-  technique labels from their sources, and mark R12's lab-setup log clears.
 - **Phase 3:** rules R04, R10, R11, R14, R15, R17, R18 and R19 (the network rules can use the
   Zeek logs, which don't overlap the host logs in time), plus investigation and ATT&CK
   coverage pages.

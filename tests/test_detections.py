@@ -51,7 +51,9 @@ def test_rule_is_quiet_on_negative_fixture(con: duckdb.DuckDBPyConnection, rule:
 
 # Positive fixtures that log one launch in both Sysmon and Security 4688 must alert once per
 # launch, and each extra case (renamed tool, quoted payload, task under Microsoft) must fire.
-@pytest.mark.parametrize(("rule_id", "alerts"), [("R03", 3), ("R05", 3), ("R06", 2), ("R07", 3)])
+@pytest.mark.parametrize(
+    ("rule_id", "alerts"), [("R03", 3), ("R05", 3), ("R06", 2), ("R07", 3), ("R16", 2)]
+)
 def test_positive_fixture_alert_counts(
     con: duckdb.DuckDBPyConnection, rule_id: str, alerts: int
 ) -> None:
@@ -178,18 +180,38 @@ def test_verdicts_round_trip_through_a_file(con: duckdb.DuckDBPyConnection, tmp_
     assert apply_verdicts(con, path) == (1, ["gone"])
     assert con.execute("SELECT status FROM alerts").fetchall() == [("true_positive",)]
 
-    # Export keeps the reason already written for an alert.
-    assert export_verdicts(con, path) == 1
+    # A verdict saved later in the dashboard wins over the file on the next detect run...
+    con.execute("UPDATE alerts SET status = 'false_positive'")
+    assert apply_verdicts(con, path) == (0, ["gone"])
+    assert con.execute("SELECT status FROM alerts").fetchall() == [("false_positive",)]
+
+    # ...and export copies it into the file, keeping reasons and rows for other databases.
+    assert export_verdicts(con, path) == 2
     assert path.read_text(encoding="utf-8") == (
-        f"alert_id,status,reason\n{alert_id},true_positive,dumpert\n"
+        f"alert_id,status,reason\n{alert_id},false_positive,dumpert\ngone,closed,\n"
     )
+    assert not path.with_suffix(".csv.tmp").exists()
+
+
+def test_verdict_files_saved_by_excel_are_read(
+    con: duckdb.DuckDBPyConnection, tmp_path: Path
+) -> None:
+    rule = load_one_lsass_access(con)
+    run_rule(con, rule)
+    (alert_id,) = con.execute("SELECT alert_id FROM alerts").fetchone() or ("",)
+    path = tmp_path / "verdicts.csv"
+    path.write_bytes(f"﻿alert_id,status,reason\r\n {alert_id} , closed ,x\r\n".encode())
+    assert apply_verdicts(con, path) == (1, [])
+    assert con.execute("SELECT status FROM alerts").fetchall() == [("closed",)]
 
 
 @pytest.mark.parametrize(
     ("body", "message"),
     [
-        ("id,status,reason\nx,new,\n", "columns must be"),
-        ("alert_id,status,reason\nx,pwned,\n", "unknown status"),
+        ("id,status,reason\nx,closed,\n", "columns must be"),
+        ("alert_id,status,reason\nx,pwned,\n", "invalid status"),
+        ("alert_id,status,reason\nx,new,\n", "invalid status"),
+        ("alert_id,status,reason\nx,closed,\nx,triaged,\n", "listed twice"),
     ],
 )
 def test_apply_verdicts_rejects_bad_files(
@@ -214,7 +236,9 @@ def test_detect_and_export_verdicts_commands(
         cli.main(["detect", *base, "--rules-dir", str(RULES_DIR), "--verdicts", str(verdicts)]) == 0
     )
     assert cli.main(["export-verdicts", *base, "--out", str(verdicts)]) == 0
-    assert "0 verdicts written" in capsys.readouterr().out
+    assert "0 verdicts in" in capsys.readouterr().out
+    verdicts.write_text("bad header\n", encoding="utf-8")
+    assert cli.main(["export-verdicts", *base, "--out", str(verdicts)]) == 2
 
     verdicts.write_text("alert_id,status,reason\nx,pwned,\n", encoding="utf-8")
     args = ["detect", *base, "--rules-dir", str(RULES_DIR), "--verdicts", str(verdicts)]

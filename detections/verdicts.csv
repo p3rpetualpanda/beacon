@@ -1,0 +1,9 @@
+alert_id,status,reason
+68944df567aeaf18702b0d387ee2ce99,true_positive,Empire stager (powershell -noP -sta -w 1 -enc) run by the recorded PsExec attack
+8387ae971539987ace32374a2d642dda,false_positive,Log cleared in the first second of the recording: the lab reset before the attack
+943db6cf1edc67c8db26622e664ad2eb,true_positive,PowerShell sets a Run key that starts rundll32 on a DLL in the user's AppData (APT29 day 2)
+9cafb93011bb29745f341ac81598ad03,true_positive,Empire stager (powershell -noP -sta -w 1 -enc) run by the recorded WMI attack
+a47ad459c80dd1e40e41cda5d3f6db01,true_positive,Empire stager (powershell -enc) launched by the recorded Run-key attack
+a8ed063786fac805e1b26d5349676087,false_positive,Log cleared in the first second of the recording: the lab reset before the attack
+a992f8a2357826e037c319a9c3020dd8,false_positive,"A cscript diagnostics collector (systeminfo, tasklist, wevtutil epl, powercfg into a config folder), not the attack"
+fcaaef882281130b8d43c1388064eaac,false_positive,Log cleared in the first second of the recording: the lab reset before the attack
