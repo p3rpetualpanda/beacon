@@ -7,6 +7,7 @@ ts, dataset, host_name, user_name, summary and event_ids (the evidence, as VARCH
 
 from __future__ import annotations
 
+import csv
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,9 +15,13 @@ from pathlib import Path
 import duckdb
 import yaml
 
+from beacon.dashboard import STATUSES, set_alert_status
 from beacon.ingest.fetch import TECHNIQUE_RE
 
 DEFAULT_RULES_DIR = Path("detections")
+# Reviewed analyst verdicts, kept in git so precision can be rebuilt from scratch.
+DEFAULT_VERDICTS = DEFAULT_RULES_DIR / "verdicts.csv"
+VERDICT_FIELDS = ["alert_id", "status", "reason"]
 SEVERITIES = ("low", "medium", "high", "critical")
 RULE_ID_RE = re.compile(r"^R\d{2}$")
 FIELDS = ("id", "name", "technique", "tactic", "severity", "description")
@@ -107,3 +112,33 @@ def run_rule(con: duckdb.DuckDBPyConnection, rule: Rule) -> int:
         con.execute("ROLLBACK")
         raise
     return int(count)
+
+
+def apply_verdicts(con: duckdb.DuckDBPyConnection, path: Path) -> tuple[int, list[str]]:
+    """Set alert statuses from a verdicts file. Returns how many applied and the ids not found."""
+    with path.open(newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle)
+        if reader.fieldnames != VERDICT_FIELDS:
+            raise RuleError(f"{path}: columns must be {', '.join(VERDICT_FIELDS)}")
+        rows = list(reader)
+    bad = [r["alert_id"] for r in rows if r["status"] not in STATUSES]
+    if bad:
+        raise RuleError(f"{path}: unknown status for {', '.join(bad)}")
+    missing = [r["alert_id"] for r in rows if not set_alert_status(con, r["alert_id"], r["status"])]
+    return len(rows) - len(missing), missing
+
+
+def export_verdicts(con: duckdb.DuckDBPyConnection, path: Path) -> int:
+    """Write every alert with a status other than new to path, keeping reasons already there."""
+    reasons: dict[str, str] = {}
+    if path.exists():
+        with path.open(newline="", encoding="utf-8") as handle:
+            reasons = {r["alert_id"]: r["reason"] for r in csv.DictReader(handle)}
+    rows = con.execute(
+        "SELECT alert_id, status FROM alerts WHERE status <> 'new' ORDER BY rule_id, alert_id"
+    ).fetchall()
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle, lineterminator="\n")
+        writer.writerow(VERDICT_FIELDS)
+        writer.writerows([alert_id, status, reasons.get(alert_id, "")] for alert_id, status in rows)
+    return len(rows)

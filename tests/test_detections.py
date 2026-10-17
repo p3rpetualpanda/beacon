@@ -7,7 +7,14 @@ import pytest
 
 from beacon import cli
 from beacon.db import connect
-from beacon.detect import Rule, RuleError, load_rules, run_rule
+from beacon.detect import (
+    Rule,
+    RuleError,
+    apply_verdicts,
+    export_verdicts,
+    load_rules,
+    run_rule,
+)
 
 RULES_DIR = Path(__file__).parents[1] / "detections"
 RULES = load_rules(RULES_DIR)
@@ -143,3 +150,72 @@ def test_detect_command(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> N
     bad.mkdir(parents=True)
     (bad / "rule.yml").write_text("id: [unclosed", encoding="utf-8")
     assert cli.main(["detect", "--db", str(db_path), "--rules-dir", str(bad.parent)]) == 2
+
+
+def test_verdicts_decide_precision_before_labels(con: duckdb.DuckDBPyConnection) -> None:
+    rule = load_one_lsass_access(con)
+    con.execute("INSERT INTO datasets (name, attack_techniques) VALUES ('fixture', ['T1003'])")
+    run_rule(con, rule)
+    assert con.execute(
+        "SELECT precision, verdicts FROM rule_performance WHERE rule_id = 'R03'"
+    ).fetchone() == (1.0, 0)
+    # The label says true; an analyst's false_positive overrides it.
+    con.execute("UPDATE alerts SET status = 'false_positive'")
+    assert con.execute(
+        "SELECT precision, verdicts FROM rule_performance WHERE rule_id = 'R03'"
+    ).fetchone() == (0.0, 1)
+
+
+def test_verdicts_round_trip_through_a_file(con: duckdb.DuckDBPyConnection, tmp_path: Path) -> None:
+    rule = load_one_lsass_access(con)
+    run_rule(con, rule)
+    (alert_id,) = con.execute("SELECT alert_id FROM alerts").fetchone() or ("",)
+    path = tmp_path / "verdicts.csv"
+    path.write_text(
+        f"alert_id,status,reason\n{alert_id},true_positive,dumpert\ngone,closed,\n",
+        encoding="utf-8",
+    )
+    assert apply_verdicts(con, path) == (1, ["gone"])
+    assert con.execute("SELECT status FROM alerts").fetchall() == [("true_positive",)]
+
+    # Export keeps the reason already written for an alert.
+    assert export_verdicts(con, path) == 1
+    assert path.read_text(encoding="utf-8") == (
+        f"alert_id,status,reason\n{alert_id},true_positive,dumpert\n"
+    )
+
+
+@pytest.mark.parametrize(
+    ("body", "message"),
+    [
+        ("id,status,reason\nx,new,\n", "columns must be"),
+        ("alert_id,status,reason\nx,pwned,\n", "unknown status"),
+    ],
+)
+def test_apply_verdicts_rejects_bad_files(
+    con: duckdb.DuckDBPyConnection, tmp_path: Path, body: str, message: str
+) -> None:
+    path = tmp_path / "verdicts.csv"
+    path.write_text(body, encoding="utf-8")
+    with pytest.raises(RuleError, match=message):
+        apply_verdicts(con, path)
+
+
+def test_detect_and_export_verdicts_commands(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    db_path = tmp_path / "b.duckdb"
+    con = connect(db_path)
+    load_fixture(con, RULES_DIR / "R03_lsass_memory_access" / "positive.jsonl")
+    con.close()
+    verdicts = tmp_path / "verdicts.csv"
+    base = ["--db", str(db_path)]
+    assert (
+        cli.main(["detect", *base, "--rules-dir", str(RULES_DIR), "--verdicts", str(verdicts)]) == 0
+    )
+    assert cli.main(["export-verdicts", *base, "--out", str(verdicts)]) == 0
+    assert "0 verdicts written" in capsys.readouterr().out
+
+    verdicts.write_text("alert_id,status,reason\nx,pwned,\n", encoding="utf-8")
+    args = ["detect", *base, "--rules-dir", str(RULES_DIR), "--verdicts", str(verdicts)]
+    assert cli.main(args) == 2

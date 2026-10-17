@@ -48,6 +48,11 @@ def build_parser() -> argparse.ArgumentParser:
     detect.add_argument("--db", type=Path, default=db.DEFAULT_DB)
     detect.add_argument("--rules-dir", type=Path, default=detect_mod.DEFAULT_RULES_DIR)
     detect.add_argument("--only", nargs="+", metavar="ID", help="run only these rules, e.g. R03")
+    detect.add_argument("--verdicts", type=Path, default=detect_mod.DEFAULT_VERDICTS)
+
+    export = commands.add_parser("export-verdicts", help="save analyst verdicts to a CSV file")
+    export.add_argument("--db", type=Path, default=db.DEFAULT_DB)
+    export.add_argument("--out", type=Path, default=detect_mod.DEFAULT_VERDICTS)
 
     auth = commands.add_parser("load-auth-log", help="load SSH events from a Linux auth.log")
     auth.add_argument("file", type=Path)
@@ -65,7 +70,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "load":
         return _load(args.db, args.manifest, args.raw_dir, args.interim_dir, args.only)
     if args.command == "detect":
-        return _detect(args.db, args.rules_dir, args.only)
+        return _detect(args.db, args.rules_dir, args.only, args.verdicts)
+    if args.command == "export-verdicts":
+        return _export_verdicts(args.db, args.out)
     if args.command == "load-auth-log":
         return _load_auth_log(args.file, args.db, args.dataset, args.year, args.tz)
     if args.data_command == "fetch":
@@ -139,7 +146,7 @@ def _load(
     return 0
 
 
-def _detect(db_path: Path, rules_dir: Path, only: list[str] | None) -> int:
+def _detect(db_path: Path, rules_dir: Path, only: list[str] | None, verdicts: Path) -> int:
     try:
         rules = detect_mod.load_rules(rules_dir)
     # ValueError covers RuleError and unreadable text; YAMLError a malformed rule.yml.
@@ -155,6 +162,17 @@ def _detect(db_path: Path, rules_dir: Path, only: list[str] | None) -> int:
         for rule in rules:
             if not only or rule.rule_id in only:
                 detect_mod.run_rule(con, rule)
+        if verdicts.exists():
+            try:
+                applied, missing = detect_mod.apply_verdicts(con, verdicts)
+            except (ValueError, OSError) as exc:
+                print(f"cannot apply verdicts: {exc}", file=sys.stderr)
+                return 2
+            print(f"applied {applied} verdicts from {verdicts}")
+            if missing:
+                print(
+                    f"verdicts for alerts no longer raised: {', '.join(missing)}", file=sys.stderr
+                )
         rows = con.execute(
             "SELECT rule_id, name, hits, precision FROM rule_performance "
             "WHERE rule_id IN (SELECT unnest($ids))",
@@ -165,6 +183,16 @@ def _detect(db_path: Path, rules_dir: Path, only: list[str] | None) -> int:
     for rule_id, name, hits, precision in rows:
         shown = "-" if precision is None else f"{precision:.0%}"
         print(f"{rule_id}  {name:<40} {hits:>5} alerts  precision {shown}")
+    return 0
+
+
+def _export_verdicts(db_path: Path, out: Path) -> int:
+    con = db.connect(db_path)
+    try:
+        count = detect_mod.export_verdicts(con, out)
+    finally:
+        con.close()
+    print(f"{count} verdicts written to {out}")
     return 0
 
 
