@@ -52,8 +52,9 @@ def test_evidence_and_verdicts(alerting: duckdb.DuckDBPyConnection) -> None:
     assert {e["src_ip"] for e in evidence} == {"203.0.113.5"}
 
     assert dashboard.set_alert_status(alerting, r20["alert_id"], "true_positive")
-    assert dashboard.alert_queue(alerting, statuses=["true_positive"])[0]["alert_id"] == (
-        r20["alert_id"]
+    assert (
+        dashboard.alert_queue(alerting, statuses=["true_positive"])[0]["alert_id"]
+        == (r20["alert_id"])
     )
     assert not dashboard.set_alert_status(alerting, "no-such-alert", "closed")
     with pytest.raises(ValueError, match="status must be one of"):
@@ -72,3 +73,26 @@ def test_events_per_dataset_uses_the_latest_load(con: duckdb.DuckDBPyConnection)
         ("b", 50, 0),
         ("a", 10, 1),
     ]
+
+
+def test_status_order_and_empty_filters(alerting: duckdb.DuckDBPyConnection) -> None:
+    (r20,) = dashboard.alert_queue(alerting, rule_ids=["R20"])
+    dashboard.set_alert_status(alerting, r20["alert_id"], "false_positive")
+    assert [r["status"] for r in dashboard.alerts_by_status(alerting)] == [
+        "new",
+        "false_positive",
+    ]
+    # An empty filter is no filter, so a cleared multiselect shows everything.
+    assert len(dashboard.alert_queue(alerting, statuses=[], rule_ids=[])) == 4
+    assert dashboard.alert_queue(alerting, statuses=["new"], rule_ids=["R20"]) == []
+
+
+def test_evidence_counts_distinct_existing_events(alerting: duckdb.DuckDBPyConnection) -> None:
+    alerting.execute(
+        "INSERT INTO alerts (alert_id, rule_id, ts, summary, event_ids) VALUES "
+        "('dup', 'R03', '2020-01-01', 'x', ['R03fixture-1', 'R03fixture-1', 'R03fixture-2'])"
+    )
+    (row,) = [r for r in dashboard.alert_queue(alerting) if r["alert_id"] == "dup"]
+    assert row["evidence"] == 2
+    evidence = dashboard.alert_evidence(alerting, "dup")
+    assert [e["event_id"] for e in evidence] == ["R03fixture-1", "R03fixture-2"]

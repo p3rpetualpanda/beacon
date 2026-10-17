@@ -27,7 +27,7 @@ def alerts_by_severity(con: duckdb.DuckDBPyConnection) -> list[dict[str, Any]]:
         SELECT r.severity, count(*) AS alerts
         FROM alerts a JOIN rules r USING (rule_id)
         GROUP BY r.severity
-        ORDER BY list_position(['critical', 'high', 'medium', 'low'], r.severity)
+        ORDER BY list_position(['critical', 'high', 'medium', 'low'], r.severity), r.severity
         """,
     )
 
@@ -36,7 +36,7 @@ def alerts_by_status(con: duckdb.DuckDBPyConnection) -> list[dict[str, Any]]:
     return _rows(
         con,
         "SELECT status, count(*) AS alerts FROM alerts GROUP BY status "
-        "ORDER BY list_position($statuses, status)",
+        "ORDER BY list_position($statuses, status), status",
         {"statuses": list(STATUSES)},
     )
 
@@ -57,8 +57,10 @@ def events_per_dataset(con: duckdb.DuckDBPyConnection) -> list[dict[str, Any]]:
         SELECT dataset, rows_loaded AS events, rows_rejected AS rejected,
                duplicates_dropped AS duplicates, min_ts AS first_event, max_ts AS last_event
         FROM data_quality
-        QUALIFY row_number() OVER (PARTITION BY dataset ORDER BY loaded_at DESC) = 1
-        ORDER BY events DESC
+        QUALIFY row_number() OVER (
+            PARTITION BY dataset ORDER BY loaded_at DESC, rows_loaded DESC
+        ) = 1
+        ORDER BY events DESC, dataset
         """,
     )
 
@@ -69,12 +71,17 @@ def alert_queue(
     statuses: list[str] | None = None,
     rule_ids: list[str] | None = None,
 ) -> list[dict[str, Any]]:
-    """Alerts newest first, optionally filtered by status and rule."""
+    """Alerts newest first, optionally filtered by status and rule.
+
+    An empty or missing filter means no filter, so clearing a filter shows every alert.
+    `evidence` counts distinct event ids, the same events alert_evidence returns.
+    """
     return _rows(
         con,
         """
         SELECT a.alert_id, a.ts, a.rule_id, r.name AS rule, r.severity, a.status,
-               a.host_name, a.user_name, a.dataset, a.summary, len(a.event_ids) AS evidence
+               a.host_name, a.user_name, a.dataset, a.summary,
+               len(list_distinct(a.event_ids)) AS evidence
         FROM alerts a JOIN rules r USING (rule_id)
         WHERE ($statuses IS NULL OR list_contains($statuses, a.status))
           AND ($rule_ids IS NULL OR list_contains($rule_ids, a.rule_id))
