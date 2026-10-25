@@ -1,0 +1,4 @@
+* text=auto
+
+# The contract schema is copied byte-for-byte to ThreatLens: keep LF on every OS.
+contracts/** text eol=lf
