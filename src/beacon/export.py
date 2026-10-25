@@ -7,7 +7,9 @@ Beacon-specific detail lives under OCSF's `unmapped` object in v1.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Sequence
+from pathlib import Path
 from typing import Any
 
 import duckdb
@@ -89,10 +91,38 @@ def findings(
     return out
 
 
+def write_jsonl(items: Iterable[dict[str, Any]], path: Path) -> int:
+    """Write one compact, key-sorted JSON object per line (UTF-8, LF); return the count.
+
+    Same input gives the same bytes on Windows and Linux, and non-ASCII text stays as UTF-8.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # Write beside the target and swap in at the end, so a failure keeps the previous export.
+    tmp = path.with_name(path.name + ".tmp")
+    count = 0
+    try:
+        with tmp.open("w", encoding="utf-8", newline="\n") as fh:
+            for item in items:
+                fh.write(
+                    json.dumps(item, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+                )
+                fh.write("\n")
+                count += 1
+        tmp.replace(path)
+    finally:
+        tmp.unlink(missing_ok=True)
+    return count
+
+
 def _finding(alert: dict[str, Any], events: list[dict[str, Any]]) -> dict[str, Any]:
     ts_ms = [event["ts_ms"] for event in events]
     if not ts_ms:
         raise ExportError(f"alert {alert['alert_id']}: no evidence events")
+    if alert["dataset"] is None:
+        raise ExportError(f"alert {alert['alert_id']}: dataset is NULL (becomes the environment)")
+    for field, known in (("severity", SEVERITIES), ("status", STATUSES)):
+        if alert[field] not in known:
+            raise ExportError(f"alert {alert['alert_id']}: unknown {field} {alert[field]!r}")
     return {
         "schema_version": CONTRACT_VERSION,
         "class_uid": 2004,

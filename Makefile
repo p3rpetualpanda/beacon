@@ -1,4 +1,4 @@
-.PHONY: install lint typecheck security test check data load detect dashboard quality clean
+.PHONY: install lint typecheck security test check data load detect export dashboard quality clean
 
 install:
 	uv sync
@@ -36,3 +36,6 @@ quality:
 
 clean:
 	rm -rf .pytest_cache .mypy_cache .ruff_cache .coverage htmlcov
+
+export:
+	uv run beacon export-alerts

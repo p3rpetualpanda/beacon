@@ -2,6 +2,23 @@
 
 Short records of design choices and why they were made, newest first.
 
+## 2026-10-25: Export alerts as OCSF Detection Findings
+
+`beacon export-alerts` writes each alert as an OCSF Detection Finding (class 2004), checked against
+OCSF 1.9.0 on schema.ocsf.io; no field names from the design needed changing. The contract's own
+version lives in `schema_version` (`1.0`), because OCSF would put its release number there, and the
+OCSF release is in `metadata.version`. Beacon-specific detail (environment, entities, evidence, raw
+status) sits under OCSF's `unmapped` object, because moving it into native OCSF objects is a
+larger change that v1 does not need. Entities and evidence are derived at export time from
+`alerts.event_ids`, so no rule SQL changed. Evidence is capped at the first 50 events by time,
+with `evidence_total` giving the true count, so one noisy alert cannot bloat the file. The file is
+sorted by `(time, uid)` with sorted keys, UTF-8 and LF line endings, so two exports of the same
+database are byte-identical on Windows and Linux. An alert whose evidence events are missing fails
+the export instead of writing partial evidence.
+
+**Why:** ThreatLens needs a stable, validated interface to ingest, and a standard envelope means
+other tools can read it. Determinism makes the export diffable and testable.
+
 ## 2026-10-17: Analyst verdicts decide precision, kept in a reviewed file
 
 `rule_performance` counts an alert marked `true_positive` or `false_positive` as such, and uses

@@ -29,3 +29,6 @@ data/interim/
 CLAUDE.md
 mistakes.md
 next-steps.md
+
+# Exported findings (regenerate with make export)
+exports/

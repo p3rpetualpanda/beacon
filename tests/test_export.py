@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -11,9 +12,10 @@ import duckdb
 import jsonschema
 import pytest
 
-from beacon import __version__
+from beacon import __version__, cli, db
 from beacon.detect import Rule, run_rule
-from beacon.export import ExportError, findings
+from beacon.export import ExportError, findings, write_jsonl
+from beacon.load import load_event_codes
 from tests.test_detections import RULES, load_fixture, rule_folder
 
 EVIDENCE_KEYS = {
@@ -228,6 +230,24 @@ def set_(dotted: str, value: Any) -> Any:
     return apply
 
 
+def pad_evidence(count: int) -> Any:
+    """Make `count` otherwise-valid evidence rows, so only the maxItems cap can reject them."""
+
+    def apply(finding: dict[str, Any]) -> None:
+        finding["unmapped"]["evidence"] = [finding["unmapped"]["evidence"][0]] * count
+
+    return apply
+
+
+def test_schema_accepts_exactly_50_evidence_rows(con: duckdb.DuckDBPyConnection) -> None:
+    rule = rule_by_id("R05")
+    load_fixture(con, rule_folder(rule) / "positive.jsonl")
+    run_rule(con, rule)
+    finding = copy.deepcopy(findings(con)[0])
+    pad_evidence(50)(finding)
+    _validate(finding)
+
+
 @pytest.mark.parametrize("rule", RULES, ids=lambda r: r.rule_id)
 def test_every_rule_exports_valid_findings(con: duckdb.DuckDBPyConnection, rule: Rule) -> None:
     load_fixture(con, rule_folder(rule) / "positive.jsonl")
@@ -246,7 +266,7 @@ def test_every_rule_exports_valid_findings(con: duckdb.DuckDBPyConnection, rule:
         set_("schema_version", "2.0"),
         set_("surprise", 1),
         set_("unmapped.entities.hosts", [None]),
-        set_("unmapped.evidence", [{}] * 51),
+        pad_evidence(51),
         set_("finding_info.attacks", [{"technique": {"uid": "bad"}, "tactic": {"name": "x"}}]),
     ],
 )
@@ -259,3 +279,116 @@ def test_schema_rejects_broken_findings(con: duckdb.DuckDBPyConnection, breakage
     breakage(broken)
     with pytest.raises(jsonschema.ValidationError):
         _validate(broken)
+
+
+def _r05_db(path: Path) -> None:
+    con = db.connect(path)
+    load_event_codes(con)
+    rule = rule_by_id("R05")
+    load_fixture(con, rule_folder(rule) / "positive.jsonl")
+    run_rule(con, rule)
+    con.close()
+
+
+def test_export_is_byte_identical_and_lf_only(
+    con: duckdb.DuckDBPyConnection, tmp_path: Path
+) -> None:
+    rule = rule_by_id("R05")
+    load_fixture(con, rule_folder(rule) / "positive.jsonl")
+    run_rule(con, rule)
+    a, b = tmp_path / "x" / "a.jsonl", tmp_path / "b.jsonl"
+    assert write_jsonl(findings(con), a) == 3
+    write_jsonl(findings(con), b)
+    assert a.read_bytes() == b.read_bytes()
+    assert b"\r\n" not in a.read_bytes()
+    assert chr(0x2013).encode() in a.read_bytes()  # raw UTF-8, not a backslash-u escape
+    times = [json.loads(line)["time"] for line in a.read_text("utf-8").splitlines()]
+    assert times == sorted(times)
+
+
+def test_cli_export_alerts(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    database, out = tmp_path / "b.duckdb", tmp_path / "out.jsonl"
+    _r05_db(database)
+    assert cli.main(["export-alerts", "--db", str(database), "--out", str(out)]) == 0
+    assert "3 findings in" in capsys.readouterr().out
+    assert len(out.read_text("utf-8").splitlines()) == 3
+
+
+def test_cli_unknown_rule_exits_2(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    database, out = tmp_path / "b.duckdb", tmp_path / "out.jsonl"
+    _r05_db(database)
+    code = cli.main(["export-alerts", "--db", str(database), "--out", str(out), "--only", "R77"])
+    assert code == 2
+    assert "R77" in capsys.readouterr().err
+    assert not out.exists()
+
+
+def test_cli_missing_evidence_exits_2(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    database, out = tmp_path / "b.duckdb", tmp_path / "out.jsonl"
+    _r05_db(database)
+    con = db.connect(database)
+    con.execute("UPDATE alerts SET event_ids = list_append(event_ids, 'nope')")
+    con.close()
+    assert cli.main(["export-alerts", "--db", str(database), "--out", str(out)]) == 2
+    assert capsys.readouterr().err.startswith("cannot export findings")
+    assert not out.exists()
+
+
+def test_cli_empty_export_exits_2_and_keeps_existing_file(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    database, out = tmp_path / "empty.duckdb", tmp_path / "out.jsonl"
+    db.connect(database).close()
+    out.write_text("previous export\n", encoding="utf-8")
+    assert cli.main(["export-alerts", "--db", str(database), "--out", str(out)]) == 2
+    assert "no alerts" in capsys.readouterr().err
+    assert out.read_text("utf-8") == "previous export\n"
+
+
+def test_null_dataset_raises(con: duckdb.DuckDBPyConnection) -> None:
+    _insert_rule(con)
+    _insert_event(con, "e1", 0)
+    con.execute(
+        "INSERT INTO alerts (alert_id, rule_id, ts, dataset, summary, event_ids) "
+        "VALUES ('nulldata-1', 'R99', TIMESTAMP '2020-05-02 10:00:00', NULL, 'test', ['e1'])"
+    )
+    with pytest.raises(ExportError, match="nulldata-1"):
+        findings(con)
+
+
+def test_unknown_status_raises_export_error(con: duckdb.DuckDBPyConnection) -> None:
+    _insert_rule(con)
+    _insert_event(con, "e1", 0)
+    con.execute(
+        "INSERT INTO alerts (alert_id, rule_id, ts, dataset, summary, event_ids) "
+        "VALUES ('badstatus-1', 'R99', TIMESTAMP '2020-05-02 10:00:00', 'fixture', 't', ['e1'])"
+    )
+    con.execute("UPDATE alerts SET status = 'escalated'")
+    with pytest.raises(ExportError, match=r"badstatus-1.*escalated"):
+        findings(con)
+
+
+def test_unknown_severity_raises_export_error(con: duckdb.DuckDBPyConnection) -> None:
+    _insert_rule(con)
+    _insert_event(con, "e1", 0)
+    con.execute(
+        "INSERT INTO alerts (alert_id, rule_id, ts, dataset, summary, event_ids) "
+        "VALUES ('badsev-1', 'R99', TIMESTAMP '2020-05-02 10:00:00', 'fixture', 't', ['e1'])"
+    )
+    con.execute("UPDATE rules SET severity = 'urgent'")
+    with pytest.raises(ExportError, match=r"badsev-1.*urgent"):
+        findings(con)
+
+
+def test_write_jsonl_failure_keeps_previous_file(tmp_path: Path) -> None:
+    out = tmp_path / "out.jsonl"
+    out.write_text("previous export\n", encoding="utf-8")
+
+    def items() -> Iterator[dict[str, Any]]:
+        yield {"a": 1}
+        raise RuntimeError("boom")
+
+    with pytest.raises(RuntimeError):
+        write_jsonl(items(), out)
+    assert out.read_text("utf-8") == "previous export\n"
+    assert [p.name for p in tmp_path.iterdir()] == ["out.jsonl"]
