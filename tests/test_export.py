@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
+import copy
+import json
+from pathlib import Path
+from typing import Any
+
 import duckdb
+import jsonschema
 import pytest
 
 from beacon import __version__
@@ -60,7 +66,10 @@ def test_finding_fields_for_r05(con: duckdb.DuckDBPyConnection) -> None:
     f = out[0]
     assert f["schema_version"] == "1.0"
     assert (f["class_uid"], f["category_uid"], f["activity_id"], f["type_uid"]) == (
-        2004, 2, 1, 200401
+        2004,
+        2,
+        1,
+        200401,
     )
     assert (f["severity_id"], f["severity"]) == (3, "Medium")
     assert (f["status_id"], f["status"]) == (1, "New")
@@ -185,3 +194,68 @@ def test_only_filters_rules(con: duckdb.DuckDBPyConnection) -> None:
     assert out
     assert {f["finding_info"]["analytic"]["uid"] for f in out} == {"R05"}
     assert {f["finding_info"]["analytic"]["uid"] for f in findings(con)} == {"R05", "R99"}
+
+
+SCHEMA_PATH = Path(__file__).resolve().parents[1] / "contracts" / "detection-finding-v1.schema.json"
+
+
+def _validate(finding: dict[str, Any]) -> None:
+    schema = json.loads(SCHEMA_PATH.read_text("utf-8"))
+    jsonschema.validate(finding, schema, cls=jsonschema.Draft202012Validator)
+
+
+def _walk(finding: dict[str, Any], dotted: str) -> tuple[dict[str, Any], str]:
+    *parents, leaf = dotted.split(".")
+    node = finding
+    for key in parents:
+        node = node[key]
+    return node, leaf
+
+
+def drop(dotted: str) -> Any:
+    def apply(finding: dict[str, Any]) -> None:
+        node, leaf = _walk(finding, dotted)
+        del node[leaf]
+
+    return apply
+
+
+def set_(dotted: str, value: Any) -> Any:
+    def apply(finding: dict[str, Any]) -> None:
+        node, leaf = _walk(finding, dotted)
+        node[leaf] = value
+
+    return apply
+
+
+@pytest.mark.parametrize("rule", RULES, ids=lambda r: r.rule_id)
+def test_every_rule_exports_valid_findings(con: duckdb.DuckDBPyConnection, rule: Rule) -> None:
+    load_fixture(con, rule_folder(rule) / "positive.jsonl")
+    run_rule(con, rule)
+    out = findings(con)
+    assert out
+    for finding in out:
+        _validate(finding)
+
+
+@pytest.mark.parametrize(
+    "breakage",
+    [
+        drop("finding_info.uid"),
+        set_("severity_id", 9),
+        set_("schema_version", "2.0"),
+        set_("surprise", 1),
+        set_("unmapped.entities.hosts", [None]),
+        set_("unmapped.evidence", [{}] * 51),
+        set_("finding_info.attacks", [{"technique": {"uid": "bad"}, "tactic": {"name": "x"}}]),
+    ],
+)
+def test_schema_rejects_broken_findings(con: duckdb.DuckDBPyConnection, breakage: Any) -> None:
+    rule = rule_by_id("R05")
+    load_fixture(con, rule_folder(rule) / "positive.jsonl")
+    run_rule(con, rule)
+    broken = copy.deepcopy(findings(con)[0])
+    _validate(broken)  # valid before the breakage
+    breakage(broken)
+    with pytest.raises(jsonschema.ValidationError):
+        _validate(broken)
