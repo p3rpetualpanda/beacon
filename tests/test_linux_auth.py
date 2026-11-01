@@ -81,3 +81,13 @@ def test_absurd_port_becomes_null_instead_of_failing_the_load(
     result = load_auth_log(con, log, dataset="odd", year=2026)
     assert result.rows_loaded == 1
     assert con.execute("SELECT src_ip, src_port FROM events").fetchone() == ("203.0.113.5", None)
+
+
+def test_blank_and_padded_usernames_are_cleaned() -> None:
+    lines = [
+        "Jan  1 00:00:01 h sshd[1]: Failed password for invalid user  0101 from 203.0.113.1 port 2",
+        "Jan  1 00:00:02 h sshd[2]: Failed password for  from 203.0.113.1 port 22",
+    ]
+    padded, blank = parse_lines(lines, year=2025)
+    assert padded.user_name == "0101"  # attacker-typed leading space is not a different user
+    assert blank.user_name is None  # an empty name is missing, not the user ""

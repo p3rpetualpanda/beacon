@@ -85,7 +85,7 @@ SELECT
     m.outcome                                                      AS event_outcome,
     lower(split_part(fld(j, 'Hostname'), '.', 1))                  AS host_name,
     lower(fld(j, 'Hostname'))                                      AS host_fqdn,
-    lower(regexp_extract(user_raw, '[^\\]+$'))                     AS user_name,
+    lower(split_part(regexp_extract(user_raw, '[^\\]+$'), '@', 1)) AS user_name,
     coalesce(
         CASE WHEN contains(user_raw, '\') THEN upper(split_part(user_raw, '\', 1)) END,
         upper(domain_raw)

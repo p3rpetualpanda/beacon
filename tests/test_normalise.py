@@ -8,7 +8,7 @@ from pathlib import Path
 
 import duckdb
 
-from beacon.load import load_dataset, load_windows_json
+from beacon.load import load_dataset, load_event_codes, load_windows_json
 from tests.conftest import (
     APT29_SAMPLE,
     AUTH_SAMPLE,
@@ -159,6 +159,7 @@ def test_reloading_replaces_rather_than_duplicates(con: duckdb.DuckDBPyConnectio
     load_windows_json(con, dataset, APT29_SAMPLE)
     assert one(con, "SELECT count(*) FROM events") == (151,)
     assert one(con, "SELECT count(*) FROM data_quality") == (2,)
+    assert one(con, "SELECT count(*) FROM data_quality_latest") == (1,)
     assert one(con, "SELECT attack_techniques FROM datasets WHERE name = 'apt29'") == (
         ["T1003.001"],
     )
@@ -319,3 +320,40 @@ def test_linux_auth_dataset_loads_from_a_tar_archive(
     assert result is not None and result.rows_loaded > 0
     row = con.execute("SELECT attack_techniques FROM datasets WHERE name = 'ssh'").fetchone()
     assert row == (["T1110.001"],)
+
+
+def test_upn_style_account_names_lose_the_domain_suffix(
+    con: duckdb.DuckDBPyConnection, tmp_path: Path
+) -> None:
+    base = {"Hostname": "h", "Channel": "Security", "EventID": 4624, "RecordNumber": 1}
+    records = [
+        {**base, "RecordNumber": 1, "TargetUserName": "PBeesly@dmevals.local"},
+        {**base, "RecordNumber": 2, "TargetUserName": "pbeesly", "TargetDomainName": "DMEVALS"},
+        {**base, "RecordNumber": 3, "TargetUserName": r"DMEVALS\pbeesly"},
+    ]
+    for r in records:
+        r["EventTime"] = "2020-05-02 10:00:00"
+        r["UtcTime"] = "2020-05-02 10:00:00.000"
+    path = tmp_path / "upn.json"
+    path.write_text("\n".join(json.dumps(r) for r in records) + "\n")
+    load_windows_json(con, make_dataset("upn"), path)
+    assert con.execute("SELECT DISTINCT user_name FROM events").fetchall() == [("pbeesly",)]
+
+
+def test_frequent_unmapped_windows_codes_now_have_a_category(
+    con: duckdb.DuckDBPyConnection,
+) -> None:
+    load_event_codes(con)
+    mapped = {
+        (s, c) for s, c in con.execute("SELECT source, event_code FROM event_code_map").fetchall()
+    }
+    # the 20 busiest codes with no category in the full load (2026-11-01 profile)
+    wanted = {
+        ("windows_other", "2004"), ("winsec", "5441"), ("powershell", "4105"),
+        ("powershell", "4106"), ("windows_other", "5857"), ("winsec", "5446"),
+        ("winsec", "5379"), ("winsec", "4957"), ("windows_other", "5858"),
+        ("winsec", "5157"), ("powershell", "4100"), ("winsec", "4660"),
+        ("winsec", "4611"), ("winsec", "5061"), ("winsec", "5058"), ("system", "6"),
+        ("winsec", "4664"), ("winsec", "4622"), ("winsec", "5450"),
+    }  # fmt: skip
+    assert wanted - mapped == set()

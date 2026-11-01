@@ -62,6 +62,11 @@ CREATE TABLE IF NOT EXISTS data_quality (
     ts_offset_hours     DOUBLE            -- local-to-UTC offset inferred for this dataset, if any
 );
 
+-- One row per dataset: its most recent load. data_quality keeps every load as history.
+CREATE OR REPLACE VIEW data_quality_latest AS
+SELECT * FROM data_quality
+QUALIFY row_number() OVER (PARTITION BY dataset ORDER BY loaded_at DESC) = 1;
+
 -- Maps each source's event codes to ECS category/action/outcome. Reloaded from event_codes.csv.
 CREATE TABLE IF NOT EXISTS event_code_map (
     source      VARCHAR NOT NULL,
