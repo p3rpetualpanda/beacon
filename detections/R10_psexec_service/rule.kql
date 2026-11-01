@@ -1,0 +1,9 @@
+// R10: a new service named or built like PsExec and its clones.
+union
+    (SecurityEvent | where EventID == 4697
+        | project TimeGenerated, Computer, ServiceName, ServiceFileName),
+    (Event | where Source == "Service Control Manager" and EventID == 7045
+        | extend ServiceName = tostring(parse_xml(EventData).DataItem.EventData.Data[0]["#text"]),
+                 ServiceFileName = tostring(parse_xml(EventData).DataItem.EventData.Data[1]["#text"])
+        | project TimeGenerated, Computer, ServiceName, ServiceFileName)
+| where strcat(ServiceName, " ", ServiceFileName) matches regex @'(?i)(psexe(c|svc)|paexe(c|svc)|remcom|csexec)'

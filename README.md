@@ -6,7 +6,7 @@ mapped to [MITRE ATT&CK](https://attack.mitre.org/), scores unusual activity wit
 machine learning, and reports the results on a SOC dashboard.
 
 > **Status:** Phase 2 done; Phase 3 next. Beacon loads 1,058,365 Windows, network and SSH events
-> into one normalised table, runs 12 ATT&CK-mapped detection rules over them, and shows the
+> into one normalised table, runs 15 ATT&CK-mapped detection rules over them, and shows the
 > alerts on a SOC dashboard (see the roadmap).
 
 ## Quick start
@@ -68,8 +68,11 @@ on. CI runs every rule against both. `make detect` writes hits to `alerts` and p
 | R07 Scheduled task created | T1053.005 | 2 | 100% | 0 |
 | R08 New service from a user-writable path | T1543.003 | 0 | – | 0 |
 | R09 Run key persistence | T1547.001 | 2 | 100% | 1 |
+| R10 PsExec service installed | T1569.002 | 4 | 100% | 0 |
+| R11 WMI starts a shell | T1047 | 5 | 100% | 0 |
 | R12 Security log cleared | T1070.001 | 3 | 0% | 3 |
 | R13 New local admin | T1136.001 | 0 | – | 0 |
+| R15 Kerberoasting | T1558.003 | 1 | 100% | 0 |
 | R16 Discovery burst | T1087.002 | 1 | 0% | 1 |
 | R20 SSH brute force (Linux) | T1110.001 | 515 | 100% | 0 |
 
@@ -94,13 +97,13 @@ the alert a false positive. `make detect` prints it:
 
 | Dataset | Ground-truth rows | Detected | Recall |
 | --- | --- | --- | --- |
-| apt29_day1_host | 62 | 5 | 8% |
-| apt29_day2_host | 57 | 5 | 9% |
+| apt29_day1_host | 62 | 7 | 11% |
+| apt29_day2_host | 57 | 6 | 11% |
 
 This is technique level only. The plan has no timestamps, so a detected row means "a rule for
 that technique fired somewhere in the recording", not "it fired at that step". Real recall is
-no higher than this and may be lower. The 12 rules cover few of the 55 techniques in the plan
-(3 have any detection); the misses are the to-do list for Phase 3.
+no higher than this and may be lower. The 15 rules cover few of the 55 techniques in the plan
+(5 have any detection); the misses are the to-do list for Phase 3.
 `beacon coverage --layer PATH` writes the same scores as an ATT&CK Navigator layer
 ([`docs/apt29-layer.json`](docs/apt29-layer.json)).
 
@@ -143,7 +146,7 @@ events each. ThreatLens ingests this file.
 
 ### Still to do
 
-- **Phase 3:** rules R04, R10, R11, R14, R15, R17, R18 and R19 (the network rules can use the
+- **Phase 3:** rules R04, R14, R17, R18 and R19 (the network rules can use the
   Zeek logs, which don't overlap the host logs in time), plus investigation and ATT&CK
   coverage pages.
 - **Phases 4 and 5:** as in the table above.

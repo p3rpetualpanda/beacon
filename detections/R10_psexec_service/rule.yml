@@ -1,0 +1,9 @@
+id: R10
+name: PsExec service installed
+technique: T1569.002
+tactic: Execution
+severity: high
+description: >-
+  A service is installed (System 7045 or Security 4697) whose name or binary is PsExec's
+  PSEXESVC or a lookalike tool (PAExec, RemCom, csexec). PsExec runs a command on a remote
+  host by installing this service over the ADMIN$ share.

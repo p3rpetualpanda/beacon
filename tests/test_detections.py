@@ -52,7 +52,17 @@ def test_rule_is_quiet_on_negative_fixture(con: duckdb.DuckDBPyConnection, rule:
 # Positive fixtures that log one launch in both Sysmon and Security 4688 must alert once per
 # launch, and each extra case (renamed tool, quoted payload, task under Microsoft) must fire.
 @pytest.mark.parametrize(
-    ("rule_id", "alerts"), [("R03", 3), ("R05", 3), ("R06", 2), ("R07", 3), ("R16", 3)]
+    ("rule_id", "alerts"),
+    [
+        ("R03", 3),
+        ("R05", 3),
+        ("R06", 2),
+        ("R07", 3),
+        ("R10", 3),
+        ("R11", 4),
+        ("R15", 3),
+        ("R16", 3),
+    ],
 )
 def test_positive_fixture_alert_counts(
     con: duckdb.DuckDBPyConnection, rule_id: str, alerts: int
@@ -62,8 +72,24 @@ def test_positive_fixture_alert_counts(
     assert run_rule(con, rule) == alerts
 
 
-def test_phase_2_rules_are_present() -> None:
-    expected = ["R01", "R02", "R03", "R05", "R06", "R07", "R08", "R09", "R12", "R13", "R16", "R20"]
+def test_rules_are_present() -> None:
+    expected = [
+        "R01",
+        "R02",
+        "R03",
+        "R05",
+        "R06",
+        "R07",
+        "R08",
+        "R09",
+        "R10",
+        "R11",
+        "R12",
+        "R13",
+        "R15",
+        "R16",
+        "R20",
+    ]
     assert [r.rule_id for r in RULES] == expected
 
 

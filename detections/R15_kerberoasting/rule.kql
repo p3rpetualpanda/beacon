@@ -1,0 +1,8 @@
+// R15: one account gets RC4 service tickets for 3+ different services in 5 minutes.
+SecurityEvent
+| where EventID == 4769
+| where TicketEncryptionType in ("0x17", "0x18") and Status == "0x0"
+| where ServiceName !endswith "$" and ServiceName !~ "krbtgt"
+| summarize Services = dcount(ServiceName), ServiceList = make_set(ServiceName)
+    by Computer, TargetUserName, bin(TimeGenerated, 5m)
+| where Services >= 3

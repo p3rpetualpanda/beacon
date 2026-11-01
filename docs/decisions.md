@@ -2,6 +2,23 @@
 
 Short records of design choices and why they were made, newest first.
 
+## 2026-11-01: R10 PsExec, R11 WMI shell, R15 Kerberoasting
+
+R10 looks for a service install (System 7045 or Security 4697) whose name or path matches
+PsExec-family tools (PSEXESVC, PAExec, RemCom, csexec). R11 fires when `wmiprvse.exe` starts a
+shell or script host. R15 fires when one account gets RC4 service tickets (4769, type 0x17 or
+0x18, status 0x0) for 3 or more different non-machine services within 5 minutes, one alert per
+burst. On the full data: R10 4 alerts, R11 5, R15 1, all counted true. Recall rose from 5 to 7
+rows on day 1 and from 5 to 6 on day 2.
+
+**Why:** all three have a known, narrow signature and real hits in the data, so false positives
+stay low. Where one action is logged twice (Sysmon 1 and 4688; 7045 and 4697) the rule keeps one
+record, because `alert_id` hashes the event ids and dual logging would otherwise double the count.
+R15's threshold of 3 is a judgement: the PurpleSharp burst touches 4 services, so 3 leaves margin,
+but a busy service account could trip it. Machine accounts (`$`) and krbtgt are excluded because
+they are not crackable targets. The day-1 manifest gained T1569.002 (plan step 8.C, PSEXESVC on
+nashua), without which R10 scored 0% precision on real PsExec activity.
+
 ## 2026-11-01: Recall from OTRF's emulation plan, technique level only
 
 OTRF's `apt29.xlsx` (the plan the manifest already cites, at the pinned commit) lists 49 steps
