@@ -1,0 +1,8 @@
+// R11: the WMI provider host starts a shell or script host.
+SecurityEvent
+| where EventID == 4688
+| extend Parent = tolower(tostring(split(ParentProcessName, @"\")[-1])),
+         Child = tolower(tostring(split(NewProcessName, @"\")[-1]))
+| where Parent == "wmiprvse.exe"
+| where Child in ("cmd.exe", "powershell.exe", "pwsh.exe", "wscript.exe", "cscript.exe", "mshta.exe", "rundll32.exe", "regsvr32.exe")
+| project TimeGenerated, Computer, Account, ParentProcessName, NewProcessName, CommandLine

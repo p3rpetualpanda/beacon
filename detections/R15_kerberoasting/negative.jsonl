@@ -1,0 +1,16 @@
+{"ts": "2020-10-22 08:00:00", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": "pbeesly", "raw": {"ServiceName": "a", "TicketEncryptionType": "0x12", "Status": "0x0"}}
+{"ts": "2020-10-22 08:00:01", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": "pbeesly", "raw": {"ServiceName": "b", "TicketEncryptionType": "0x12", "Status": "0x0"}}
+{"ts": "2020-10-22 08:00:02", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": "pbeesly", "raw": {"ServiceName": "c", "TicketEncryptionType": "0x12", "Status": "0x0"}}
+{"ts": "2020-10-22 08:10:00", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": "kmalone", "raw": {"ServiceName": "a", "TicketEncryptionType": "0x17", "Status": "0x0"}}
+{"ts": "2020-10-22 08:10:01", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": "kmalone", "raw": {"ServiceName": "a", "TicketEncryptionType": "0x17", "Status": "0x0"}}
+{"ts": "2020-10-22 08:10:02", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": "kmalone", "raw": {"ServiceName": "a", "TicketEncryptionType": "0x17", "Status": "0x0"}}
+{"ts": "2020-10-22 08:20:00", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": "omartinez", "raw": {"ServiceName": "DC1$", "TicketEncryptionType": "0x17", "Status": "0x0"}}
+{"ts": "2020-10-22 08:20:01", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": "omartinez", "raw": {"ServiceName": "WS2$", "TicketEncryptionType": "0x17", "Status": "0x0"}}
+{"ts": "2020-10-22 08:20:02", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": "omartinez", "raw": {"ServiceName": "krbtgt", "TicketEncryptionType": "0x17", "Status": "0x0"}}
+{"ts": "2020-10-22 08:30:00", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": "sbernard", "raw": {"ServiceName": "x", "TicketEncryptionType": "0x17", "Status": "0x1B"}}
+{"ts": "2020-10-22 08:30:01", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": "sbernard", "raw": {"ServiceName": "y", "TicketEncryptionType": "0x17", "Status": "0x1B"}}
+{"ts": "2020-10-22 08:30:02", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": "sbernard", "raw": {"ServiceName": "z", "TicketEncryptionType": "0x17", "Status": "0x1B"}}
+{"ts": "2020-10-22 08:40:00", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": "ahud", "raw": null}
+{"ts": "2020-10-22 08:50:00", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": "dphilbin", "raw": {"ServiceName": "a", "TicketEncryptionType": "0x17", "Status": "0x0"}}
+{"ts": "2020-10-22 08:50:01", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": "dphilbin", "raw": {"ServiceName": "b", "TicketEncryptionType": "0x17", "Status": "0x0"}}
+{"ts": "2020-10-22 09:10:00", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": "dphilbin", "raw": {"ServiceName": "c", "TicketEncryptionType": "0x17", "Status": "0x0"}}

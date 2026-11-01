@@ -216,10 +216,12 @@ def _detect(
         if ground_truth.exists():
             try:
                 gt_mod.store(con, gt_mod.load_ground_truth(ground_truth))
-            except (ValueError, OSError, yaml.YAMLError) as exc:
+            except (ValueError, OSError, yaml.YAMLError, duckdb.Error) as exc:
                 print(f"cannot load ground truth: {exc}", file=sys.stderr)
                 return 2
             recall = gt_mod.recall_by_dataset(con)
+        else:
+            print(f"no ground truth at {ground_truth}; recall skipped", file=sys.stderr)
     finally:
         con.close()
     for rule_id, name, hits, precision in rows:

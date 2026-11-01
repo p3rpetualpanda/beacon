@@ -1,0 +1,10 @@
+{"ts": "2020-10-22 08:29:53", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": "pgustavo", "raw": {"ServiceName": "sysmonsvc", "TicketEncryptionType": "0x17", "Status": "0x0"}}
+{"ts": "2020-10-22 08:29:54", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": "pgustavo", "raw": {"ServiceName": "nxlogsvc", "TicketEncryptionType": "0x17", "Status": "0x0"}}
+{"ts": "2020-10-22 08:29:54", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": "pgustavo", "raw": {"ServiceName": "mordorsvc", "TicketEncryptionType": "0x17", "Status": "0x0"}}
+{"ts": "2020-10-22 08:29:54", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": "pgustavo", "raw": {"ServiceName": "otrsvc", "TicketEncryptionType": "0x17", "Status": "0x0"}}
+{"ts": "2020-10-22 09:00:00", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": "jhalpert", "raw": {"ServiceName": "SQLSvc", "TicketEncryptionType": "0x18", "Status": "0x0"}}
+{"ts": "2020-10-22 09:01:00", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": "jhalpert", "raw": {"ServiceName": "HTTPSvc", "TicketEncryptionType": "0x17", "Status": "0x0"}}
+{"ts": "2020-10-22 09:02:00", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": "jhalpert", "raw": {"ServiceName": "BackupSvc", "TicketEncryptionType": "0x17", "Status": "0x0"}}
+{"ts": "2020-10-22 10:00:00", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": null, "raw": {"ServiceName": "a", "TicketEncryptionType": "0x17", "Status": "0x0"}}
+{"ts": "2020-10-22 10:00:01", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": null, "raw": {"ServiceName": "b", "TicketEncryptionType": "0x17", "Status": "0x0"}}
+{"ts": "2020-10-22 10:00:02", "source": "winsec", "event_code": "4769", "host_name": "mordordc", "user_name": null, "raw": {"ServiceName": "c", "TicketEncryptionType": "0x17", "Status": "0x0"}}

@@ -1,0 +1,9 @@
+id: R15
+name: Kerberoasting
+technique: T1558.003
+tactic: Credential Access
+severity: high
+description: >-
+  One account requests RC4-encrypted service tickets (Security 4769, encryption type 0x17 or
+  0x18) for 3 or more different user-account services within 5 minutes. Attackers do this to
+  crack the service accounts' passwords offline.
