@@ -392,3 +392,64 @@ def test_write_jsonl_failure_keeps_previous_file(tmp_path: Path) -> None:
         write_jsonl(items(), out)
     assert out.read_text("utf-8") == "previous export\n"
     assert [p.name for p in tmp_path.iterdir()] == ["out.jsonl"]
+
+
+def test_evidence_ordered_by_microsecond(con: duckdb.DuckDBPyConnection) -> None:
+    _insert_rule(con)
+    # Same millisecond, so only the microseconds say which came first; ids sort the other way.
+    for event_id, stamp in (("a-late", "10:00:00.000900"), ("z-early", "10:00:00.000100")):
+        con.execute(
+            "INSERT INTO events (event_id, ts, ts_source, dataset, source, event_code) "
+            "VALUES (?, CAST(? AS TIMESTAMP), 'utc_field', 'fixture', 'zeek', 'conn')",
+            [event_id, f"2020-05-02 {stamp}"],
+        )
+    con.execute(
+        "INSERT INTO alerts (alert_id, rule_id, ts, dataset, summary, event_ids) "
+        "VALUES ('us-1', 'R99', TIMESTAMP '2020-05-02 10:01:00', 'fixture', 't', "
+        "['a-late', 'z-early'])"
+    )
+    (f,) = findings(con)
+    assert [e["event_id"] for e in f["unmapped"]["evidence"]] == ["z-early", "a-late"]
+
+
+def test_entities_cover_events_beyond_the_evidence_cap(con: duckdb.DuckDBPyConnection) -> None:
+    _insert_rule(con)
+    for i in range(60):
+        con.execute(
+            "INSERT INTO events (event_id, ts, ts_source, dataset, source, event_code, host_name) "
+            "VALUES (?, TIMESTAMP '2020-05-02 10:00:00' + ? * INTERVAL 1 MINUTE, 'utc_field', "
+            "'fixture', 'sysmon', '4688', ?)",
+            [f"e{i}", i, f"host-{i:02d}"],
+        )
+    con.execute(
+        "INSERT INTO alerts (alert_id, rule_id, ts, dataset, summary, event_ids) "
+        "VALUES ('big-1', 'R99', TIMESTAMP '2020-05-02 12:00:00', 'fixture', 't', ?)",
+        [[f"e{i}" for i in range(60)]],
+    )
+    (f,) = findings(con)
+    assert len(f["unmapped"]["evidence"]) == 50
+    assert len(f["unmapped"]["entities"]["hosts"]) == 60
+    assert f["finding_info"]["last_seen_time"] > f["finding_info"]["first_seen_time"]
+
+
+def test_cli_missing_database_exits_2_without_creating_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    database = tmp_path / "typo.duckdb"
+    assert cli.main(["export-alerts", "--db", str(database), "--out", str(tmp_path / "o")]) == 2
+    assert "not found" in capsys.readouterr().err
+    assert not database.exists()
+
+
+def test_cli_duckdb_error_exits_2(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database = tmp_path / "b.duckdb"
+    _r05_db(database)
+
+    def locked(*args: Any, **kwargs: Any) -> Any:
+        raise duckdb.IOException("database is locked")
+
+    monkeypatch.setattr("beacon.export.findings", locked)
+    assert cli.main(["export-alerts", "--db", str(database), "--out", str(tmp_path / "o")]) == 2
+    assert capsys.readouterr().err.startswith("cannot export findings")

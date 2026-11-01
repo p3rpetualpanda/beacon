@@ -142,3 +142,18 @@ def test_zeek_conn_and_dns_have_network_fields(con: duckdb.DuckDBPyConnection) -
     assert bad_conns == 0
     assert dns_without_query < 10
     assert unmapped == 0  # every Zeek log type in the data has a row in event_codes.csv
+
+
+def test_every_exported_finding_matches_the_contract(con: duckdb.DuckDBPyConnection) -> None:
+    import json
+
+    import jsonschema
+
+    from beacon.export import findings
+
+    schema = json.loads(Path("contracts/detection-finding-v1.schema.json").read_text("utf-8"))
+    validator = jsonschema.Draft202012Validator(schema)
+    out = findings(con)
+    assert out, "no alerts in the database; run `make detect` first"
+    for finding in out:
+        validator.validate(finding)

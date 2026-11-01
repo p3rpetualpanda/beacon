@@ -62,31 +62,57 @@ def findings(
         """,
         {"only": list(only) if only is not None else None},
     )
-    by_alert: dict[str, list[dict[str, Any]]] = {a["alert_id"]: [] for a in alerts}
-    if alerts:
-        events = _query(
+    ids = {"ids": [a["alert_id"] for a in alerts]}
+    # Entities, sources and first/last seen cover every evidence event; only the rows are capped.
+    summary = {
+        row["alert_id"]: row
+        for row in _query(
             con,
             """
-            SELECT DISTINCT a.alert_id, e.event_id, epoch_ms(e.ts) AS ts_ms, e.ts, e.source,
-                   e.event_code, e.event_action, e.event_outcome,
-                   e.host_name, e.user_name, e.process_name, e.process_command_line,
-                   e.parent_process_name, e.src_ip, e.src_port, e.dst_ip, e.dst_port
+            SELECT a.alert_id, count(DISTINCT e.event_id) AS found,
+                   min(epoch_ms(e.ts)) AS first_ms, max(epoch_ms(e.ts)) AS last_ms,
+                   list_sort(list_distinct(list(e.source))) AS sources,
+                   list_sort(list_distinct(list(e.host_name))) AS hosts,
+                   list_sort(list_distinct(list(e.user_name))) AS users,
+                   list_sort(list_distinct(list(e.src_ip))) AS src_ips,
+                   list_sort(list_distinct(list(e.dst_ip))) AS dst_ips,
+                   list_sort(list_distinct(list(e.process_name))) AS processes
             FROM alerts a, unnest(a.event_ids) AS u(event_id)
             JOIN events e USING (event_id)
             WHERE a.alert_id IN (SELECT unnest($ids))
+            GROUP BY a.alert_id
             """,
-            {"ids": [a["alert_id"] for a in alerts]},
+            ids,
         )
-        for event in events:
-            by_alert[event["alert_id"]].append(event)
+    }
+    by_alert: dict[str, list[dict[str, Any]]] = {a["alert_id"]: [] for a in alerts}
+    # Order by the full timestamp (Zeek has microseconds), then keep the first MAX_EVIDENCE.
+    for event in _query(
+        con,
+        """
+        SELECT * EXCLUDE (rn) FROM (
+            SELECT *, row_number() OVER (PARTITION BY alert_id ORDER BY ts, event_id) AS rn
+            FROM (
+                SELECT DISTINCT a.alert_id, e.event_id, e.ts, e.source,
+                       e.event_code, e.event_action, e.event_outcome,
+                       e.host_name, e.user_name, e.process_name, e.process_command_line,
+                       e.parent_process_name, e.src_ip, e.src_port, e.dst_ip, e.dst_port
+                FROM alerts a, unnest(a.event_ids) AS u(event_id)
+                JOIN events e USING (event_id)
+                WHERE a.alert_id IN (SELECT unnest($ids))
+            )
+        ) WHERE rn <= $cap ORDER BY alert_id, rn
+        """,
+        {**ids, "cap": MAX_EVIDENCE},
+    ):
+        by_alert[event["alert_id"]].append(event)
 
     out = []
     for alert in alerts:
-        evidence = by_alert[alert["alert_id"]]
-        if len(evidence) != alert["evidence_total"]:
+        found = summary.get(alert["alert_id"], {}).get("found", 0)
+        if found != alert["evidence_total"]:
             raise ExportError(f"alert {alert['alert_id']}: evidence event(s) missing from events")
-        evidence.sort(key=lambda e: (e["ts_ms"], e["event_id"]))
-        out.append(_finding(alert, evidence))
+        out.append(_finding(alert, summary[alert["alert_id"]], by_alert[alert["alert_id"]]))
     out.sort(key=lambda f: (f["time"], f["finding_info"]["uid"]))
     return out
 
@@ -114,10 +140,9 @@ def write_jsonl(items: Iterable[dict[str, Any]], path: Path) -> int:
     return count
 
 
-def _finding(alert: dict[str, Any], events: list[dict[str, Any]]) -> dict[str, Any]:
-    ts_ms = [event["ts_ms"] for event in events]
-    if not ts_ms:
-        raise ExportError(f"alert {alert['alert_id']}: no evidence events")
+def _finding(
+    alert: dict[str, Any], summary: dict[str, Any], evidence: list[dict[str, Any]]
+) -> dict[str, Any]:
     if alert["dataset"] is None:
         raise ExportError(f"alert {alert['alert_id']}: dataset is NULL (becomes the environment)")
     for field, known in (("severity", SEVERITIES), ("status", STATUSES)):
@@ -142,8 +167,8 @@ def _finding(alert: dict[str, Any], events: list[dict[str, Any]]) -> dict[str, A
             "uid": alert["alert_id"],
             "title": alert["name"],
             "desc": alert["summary"],
-            "first_seen_time": min(ts_ms),
-            "last_seen_time": max(ts_ms),
+            "first_seen_time": summary["first_ms"],
+            "last_seen_time": summary["last_ms"],
             "analytic": {
                 "uid": alert["rule_id"],
                 "name": alert["name"],
@@ -156,16 +181,16 @@ def _finding(alert: dict[str, Any], events: list[dict[str, Any]]) -> dict[str, A
         },
         "unmapped": {
             "environment": alert["dataset"],
-            "data_sources": _strings(event["source"] for event in events),
+            "data_sources": summary["sources"],
             "beacon_status": alert["status"],
             "entities": {
-                "hosts": _strings(event["host_name"] for event in events),
-                "users": _strings(event["user_name"] for event in events),
-                "src_ips": _strings(event["src_ip"] for event in events),
-                "dst_ips": _strings(event["dst_ip"] for event in events),
-                "processes": _strings(event["process_name"] for event in events),
+                "hosts": summary["hosts"],
+                "users": summary["users"],
+                "src_ips": summary["src_ips"],
+                "dst_ips": summary["dst_ips"],
+                "processes": summary["processes"],
             },
-            "evidence": [_evidence_row(event) for event in events][:MAX_EVIDENCE],
+            "evidence": [_evidence_row(event) for event in evidence],
             "evidence_total": int(alert["evidence_total"]),
         },
     }
@@ -190,11 +215,6 @@ def _evidence_row(event: dict[str, Any]) -> dict[str, Any]:
         "dst_ip": event["dst_ip"],
         "dst_port": event["dst_port"],
     }
-
-
-def _strings(values: Iterable[Any]) -> list[str]:
-    """Sorted, de-duplicated non-NULL values; an empty list, never [null]."""
-    return sorted({value for value in values if value is not None})
 
 
 def _query(

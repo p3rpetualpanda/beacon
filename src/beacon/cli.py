@@ -10,6 +10,7 @@ from datetime import UTC, tzinfo
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+import duckdb
 import yaml
 
 from beacon import __version__, db
@@ -218,7 +219,14 @@ def _export_verdicts(db_path: Path, out: Path) -> int:
 
 
 def _export_alerts(db_path: Path, out: Path, only: list[str] | None) -> int:
-    con = db.connect(db_path)
+    if not db_path.exists():  # db.connect would create an empty database here
+        print(f"cannot export findings: {db_path} not found", file=sys.stderr)
+        return 2
+    try:
+        con = db.connect(db_path)
+    except duckdb.Error as exc:
+        print(f"cannot export findings: {exc}", file=sys.stderr)
+        return 2
     try:
         known = {row[0] for row in con.execute("SELECT rule_id FROM rules").fetchall()}
         unknown = set(only or ()) - known
@@ -230,7 +238,7 @@ def _export_alerts(db_path: Path, out: Path, only: list[str] | None) -> int:
             # An empty file would silently replace a real export and ThreatLens would ingest it.
             raise export_mod.ExportError(f"no alerts in {db_path} (run `make detect` first?)")
         count = export_mod.write_jsonl(items, out)
-    except (export_mod.ExportError, OSError) as exc:
+    except (export_mod.ExportError, OSError, duckdb.Error) as exc:
         print(f"cannot export findings: {exc}", file=sys.stderr)
         return 2
     finally:
