@@ -43,7 +43,7 @@ class AuthEvent:
     event_code: str
     host_name: str
     process_id: int
-    user_name: str
+    user_name: str | None
     src_ip: str
     src_port: int | None
     auth_method: str | None
@@ -88,7 +88,7 @@ def parse_lines(lines: Iterable[str], *, year: int, tz: tzinfo = UTC) -> Iterato
             event_code=code,
             host_name=host,
             process_id=int(prefix["pid"]),
-            user_name=fields["user"].lower(),
+            user_name=fields["user"].strip().lower() or None,
             src_ip=fields["ip"],
             src_port=int(fields["port"]) if fields.get("port") else None,
             auth_method=fields.get("method"),

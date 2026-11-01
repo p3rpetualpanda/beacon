@@ -50,6 +50,8 @@ de-duplicated, the time range, and how much of each key field is empty:
 | Loghub OpenSSH server log (real SSH brute-force attempts) | 175,828 | 0 | assumed UTC |
 | **Total** | **1,058,365** | **1,731** | |
 
+Known gaps in the data (measured 2026-11-01): `user_name` is empty on most rows, because many event types carry no account (Sysmon file, registry and network events, Zeek, system services). Rules that need a user filter on it being set. Windows account names are lower-cased with any `DOMAIN\` prefix or `@domain` suffix removed. `data_quality` keeps one row per load; use the `data_quality_latest` view for the current state.
+
 ## Detections
 
 Each rule lives in [`detections/`](detections/) as SQL over `events`, a hand-written Microsoft

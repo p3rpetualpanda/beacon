@@ -2,6 +2,12 @@
 
 Short records of design choices and why they were made, newest first.
 
+## 2026-11-01: Clean user names and map common event codes
+
+A full-data profile found five issues. SSH user names were stored as empty strings or with leading spaces (`' 0101'` and `'0101'` counted as two users), so the parser now strips them and stores empty as NULL. Windows `user@domain` names stayed whole, splitting one account in two; `windows.sql` now drops the `@domain` part like it drops `DOMAIN\`. Nineteen frequent event codes had no category and are now in `event_codes.csv`. `data_quality_latest` gives one row per dataset. Sparse `user_name` is documented, not filled in.
+
+**Why:** counts per user and joins on user were wrong or split, and an empty-string user hides in NULL checks (`user_name IS NULL` missed it). Unmapped categories hid events from category filters. Fixed in the loader, not the export, so every consumer gets the same data.
+
 ## 2026-10-25: Export alerts as OCSF Detection Findings
 
 `beacon export-alerts` writes each alert as an OCSF Detection Finding (class 2004), checked against
