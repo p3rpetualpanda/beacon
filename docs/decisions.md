@@ -21,8 +21,8 @@ nashua), without which R10 scored 0% precision on real PsExec activity.
 
 ## 2026-11-01: Recall from OTRF's emulation plan, technique level only
 
-OTRF's `apt29.xlsx` (the plan the manifest already cites, at the pinned commit) lists 49 steps
-for day 1 (25 steps, 1-10) and day 2 (24 steps, 11-20): a step id such as 5.A, a description, and technique
+OTRF's `apt29.xlsx` (the plan the manifest already cites, at the pinned commit) lists 49 steps:
+day 1 has 25 (groups 1-10) and day 2 has 24 (groups 11-20), a step id such as 5.A, a description, and technique
 *names* from an older ATT&CK release. It has no timestamps and no process or logon anchors, so a
 step cannot be tied to a time window without inventing one. `detections/ground_truth.yml` therefore
 holds one row per (step, technique) and recall is technique-level. I mapped each name to a current

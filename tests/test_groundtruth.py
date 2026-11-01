@@ -144,6 +144,8 @@ def test_shipped_file_is_valid() -> None:
         "steps: [{dataset: d, step: '1.A', technique: T1003, plan_name: x},"
         " {dataset: d, step: '1.A', technique: T1003, plan_name: y}]",
         "- not a mapping",
+        "steps: [{dataset: d, step: 1, technique: T1003, plan_name: x}]",
+        "steps: [{dataset: , step: '1.A', technique: T1003, plan_name: x}]",
     ],
 )
 def test_bad_file_is_rejected(tmp_path: Path, text: str) -> None:
@@ -206,3 +208,45 @@ def test_coverage_without_ground_truth_fails(tmp_path: Path) -> None:
     layer = tmp_path / "layer.json"
     assert cli.main(["coverage", "--db", str(db_file), "--layer", str(layer)]) == 2
     assert not layer.exists()
+
+
+def test_detect_warns_when_ground_truth_file_is_missing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    code = cli.main(
+        [
+            "detect",
+            "--db",
+            str(tmp_path / "b.duckdb"),
+            "--rules-dir",
+            str(rules_dir),
+            "--ground-truth",
+            str(tmp_path / "nope.yml"),
+        ]
+    )
+    assert code == 0
+    assert "recall skipped" in capsys.readouterr().err
+
+
+def test_detect_rejects_malformed_ground_truth(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    gt = tmp_path / "gt.yml"
+    gt.write_text("steps: []", encoding="utf-8")
+    code = cli.main(
+        [
+            "detect",
+            "--db",
+            str(tmp_path / "b.duckdb"),
+            "--rules-dir",
+            str(rules_dir),
+            "--ground-truth",
+            str(gt),
+        ]
+    )
+    assert code == 2
+    assert "cannot load ground truth" in capsys.readouterr().err

@@ -28,6 +28,9 @@ def load_ground_truth(path: Path = DEFAULT_GROUND_TRUTH) -> list[dict[str, str]]
     for row in rows:
         if not isinstance(row, dict) or sorted(row) != sorted(FIELDS):
             raise GroundTruthError(f"{path}: every step needs exactly {', '.join(FIELDS)}: {row}")
+        for field in ("dataset", "step", "plan_name"):
+            if not isinstance(row[field], str) or not row[field].strip():
+                raise GroundTruthError(f"{path}: {field} must be non-empty text in {row}")
         if not TECHNIQUE_RE.fullmatch(str(row["technique"])):
             raise GroundTruthError(f"{path}: bad technique in {row}")
         key = (row["dataset"], row["step"], row["technique"])
