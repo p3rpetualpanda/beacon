@@ -2,6 +2,24 @@
 
 Short records of design choices and why they were made, newest first.
 
+## 2026-11-01: Recall from OTRF's emulation plan, technique level only
+
+OTRF's `apt29.xlsx` (the plan the manifest already cites, at the pinned commit) lists 49 steps
+for day 1 (25 steps, 1-10) and day 2 (24 steps, 11-20): a step id such as 5.A, a description, and technique
+*names* from an older ATT&CK release. It has no timestamps and no process or logon anchors, so a
+step cannot be tied to a time window without inventing one. `detections/ground_truth.yml` therefore
+holds one row per (step, technique) and recall is technique-level. I mapped each name to a current
+ID by hand: parent techniques where the name is generic, sub-techniques only where the plan
+names one (PowerShell T1059.001, New Service T1543.003, Run keys T1547.001). "Commonly Used
+Port" is deprecated with no single successor, so it is left out; "Data Compressed" and "Data
+Encrypted" both map to T1560 and share a row. Step 11.A lists more techniques than I mapped
+from its truncated cell, so day 2 may be missing a few. Zeek rows are not included: the plan
+does not say which steps the network log shows. Alerts marked false_positive do not count as a
+detection. A rule's dataset is the match key, so a Windows-host rule never counts for a Zeek log.
+
+**Why:** recall that claims more precision than the source has would overstate coverage. The
+numbers in the README come from `make detect` and can only fall if matching gets stricter.
+
 ## 2026-11-01: Clean user names and map common event codes
 
 A full-data profile found five issues. SSH user names were stored as empty strings or with leading spaces (`' 0101'` and `'0101'` counted as two users), so the parser now strips them and stores empty as NULL. Windows `user@domain` names stayed whole, splitting one account in two; `windows.sql` now drops the `@domain` part like it drops `DOMAIN\`. Nineteen frequent event codes had no category and are now in `event_codes.csv`. `data_quality_latest` gives one row per dataset. Sparse `user_name` is documented, not filled in.

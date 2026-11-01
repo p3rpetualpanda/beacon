@@ -137,3 +137,37 @@ LEFT JOIN (
 ) a USING (rule_id)
 GROUP BY ALL
 ORDER BY r.rule_id;
+
+-- Steps an emulation is documented to contain, loaded from detections/ground_truth.yml by
+-- `beacon detect`. Technique level: the source plans carry no timestamps.
+CREATE TABLE IF NOT EXISTS ground_truth (
+    dataset    VARCHAR NOT NULL,
+    step       VARCHAR NOT NULL,       -- the plan's step id, e.g. 5.A
+    technique  VARCHAR NOT NULL,       -- ATT&CK technique mapped from the plan's name
+    plan_name  VARCHAR NOT NULL,       -- the plan's own technique name
+    PRIMARY KEY (dataset, step, technique)
+);
+
+-- Recall per ground-truth row: detected when any alert in the same dataset comes from a rule
+-- whose technique is the same, its parent or a sub-technique (the same match as
+-- rule_performance). Alerts an analyst marked false_positive do not count.
+CREATE OR REPLACE VIEW rule_recall AS
+SELECT
+    g.dataset,
+    g.step,
+    g.technique,
+    g.plan_name,
+    count(r.rule_id) > 0 AS detected,
+    coalesce(list_sort(list(r.rule_id) FILTER (WHERE r.rule_id IS NOT NULL)), []) AS rules
+FROM ground_truth g
+LEFT JOIN (
+    SELECT DISTINCT a.dataset, r.rule_id, r.technique
+    FROM alerts a
+    JOIN rules r USING (rule_id)
+    WHERE a.status <> 'false_positive'
+) r ON r.dataset = g.dataset
+    AND (r.technique = g.technique
+         OR starts_with(r.technique, g.technique || '.')
+         OR starts_with(g.technique, r.technique || '.'))
+GROUP BY ALL
+ORDER BY g.dataset, g.step, g.technique;

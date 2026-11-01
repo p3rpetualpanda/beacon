@@ -1,0 +1,126 @@
+# APT29 ground truth: one row per (step, technique) from OTRF's emulation plan, pinned to the
+# commit in data/manifest.yml. Technique level only: the plan has no timestamps, so there are no
+# windows. `plan_name` is the plan's own (older) ATT&CK name; `technique` is the current ID I
+# mapped it to. Day 1 = steps 1-10 (apt29_day1_host), day 2 = steps 11-20 (apt29_day2_host).
+# Left out: 'Commonly Used Port' (deprecated, no single successor).
+source_url: https://github.com/OTRF/Security-Datasets/blob/d9d40ef123d2c87d5d3df28c96bcab4f0faccc87/datasets/compound/apt29/emulationplans/apt29.xlsx
+steps:
+  - {dataset: apt29_day1_host, step: "1.A", technique: T1204, plan_name: "User Execution"}
+  - {dataset: apt29_day1_host, step: "1.A", technique: T1036, plan_name: "Masquerading"}
+  - {dataset: apt29_day1_host, step: "1.A", technique: T1571, plan_name: "Uncommonly Used Port"}
+  - {dataset: apt29_day1_host, step: "1.B", technique: T1059.003, plan_name: "Command-Line Interface"}
+  - {dataset: apt29_day1_host, step: "1.B", technique: T1059.001, plan_name: "PowerShell"}
+  - {dataset: apt29_day1_host, step: "2.A", technique: T1083, plan_name: "File and Directory Discovery"}
+  - {dataset: apt29_day1_host, step: "2.A", technique: T1119, plan_name: "Automated Collection"}
+  - {dataset: apt29_day1_host, step: "2.A", technique: T1005, plan_name: "Data from Local System"}
+  - {dataset: apt29_day1_host, step: "2.A", technique: T1560, plan_name: "Data Compressed"}
+  - {dataset: apt29_day1_host, step: "2.A", technique: T1074, plan_name: "Data Staged"}
+  - {dataset: apt29_day1_host, step: "2.B", technique: T1041, plan_name: "Exfiltration Over Command and Control Channel"}
+  - {dataset: apt29_day1_host, step: "3.A", technique: T1105, plan_name: "Remote File Copy"}
+  - {dataset: apt29_day1_host, step: "3.A", technique: T1027, plan_name: "Obfuscated Files or Information"}
+  - {dataset: apt29_day1_host, step: "3.B", technique: T1546.015, plan_name: "Component Object Model Hijacking"}
+  - {dataset: apt29_day1_host, step: "3.B", technique: T1548.002, plan_name: "Bypass User Account Control"}
+  - {dataset: apt29_day1_host, step: "3.B", technique: T1071, plan_name: "Standard Application Layer Protocol"}
+  - {dataset: apt29_day1_host, step: "3.B", technique: T1573, plan_name: "Standard Cryptographic Protocol"}
+  - {dataset: apt29_day1_host, step: "3.C", technique: T1112, plan_name: "Modify Registry"}
+  - {dataset: apt29_day1_host, step: "4.A", technique: T1059.001, plan_name: "PowerShell"}
+  - {dataset: apt29_day1_host, step: "4.A", technique: T1140, plan_name: "Deobfuscate/Decode Files or Information"}
+  - {dataset: apt29_day1_host, step: "4.B", technique: T1057, plan_name: "Process Discovery"}
+  - {dataset: apt29_day1_host, step: "4.B", technique: T1070.004, plan_name: "File Deletion"}
+  - {dataset: apt29_day1_host, step: "4.C", technique: T1083, plan_name: "File and Directory Discovery"}
+  - {dataset: apt29_day1_host, step: "4.C", technique: T1033, plan_name: "System Owner/User Discovery"}
+  - {dataset: apt29_day1_host, step: "4.C", technique: T1082, plan_name: "System Information Discovery"}
+  - {dataset: apt29_day1_host, step: "4.C", technique: T1016, plan_name: "System Network Configuration Discovery"}
+  - {dataset: apt29_day1_host, step: "4.C", technique: T1057, plan_name: "Process Discovery"}
+  - {dataset: apt29_day1_host, step: "4.C", technique: T1518.001, plan_name: "Security Software Discovery"}
+  - {dataset: apt29_day1_host, step: "4.C", technique: T1069, plan_name: "Permission Groups Discovery"}
+  - {dataset: apt29_day1_host, step: "4.C", technique: T1106, plan_name: "Execution through API"}
+  - {dataset: apt29_day1_host, step: "5.A", technique: T1543.003, plan_name: "New Service"}
+  - {dataset: apt29_day1_host, step: "5.B", technique: T1547.001, plan_name: "Registry Run Keys / Startup Folder"}
+  - {dataset: apt29_day1_host, step: "6.A", technique: T1552.001, plan_name: "Credentials in Files"}
+  - {dataset: apt29_day1_host, step: "6.A", technique: T1003, plan_name: "Credential Dumping"}
+  - {dataset: apt29_day1_host, step: "6.A", technique: T1036, plan_name: "Masquerading"}
+  - {dataset: apt29_day1_host, step: "6.B", technique: T1552.004, plan_name: "Private Keys"}
+  - {dataset: apt29_day1_host, step: "6.C", technique: T1003, plan_name: "Credential Dumping"}
+  - {dataset: apt29_day1_host, step: "7.A", technique: T1113, plan_name: "Screen Capture"}
+  - {dataset: apt29_day1_host, step: "7.A", technique: T1115, plan_name: "Clipboard Data"}
+  - {dataset: apt29_day1_host, step: "7.A", technique: T1056, plan_name: "Input Capture"}
+  - {dataset: apt29_day1_host, step: "7.B", technique: T1005, plan_name: "Data from Local System"}
+  - {dataset: apt29_day1_host, step: "7.B", technique: T1560, plan_name: "Data Compressed / Data Encrypted"}
+  - {dataset: apt29_day1_host, step: "7.B", technique: T1048, plan_name: "Exfiltration Over Alternative Protocol"}
+  - {dataset: apt29_day1_host, step: "8.A", technique: T1018, plan_name: "Remote System Discovery"}
+  - {dataset: apt29_day1_host, step: "8.A", technique: T1021.006, plan_name: "Windows Remote Management"}
+  - {dataset: apt29_day1_host, step: "8.A", technique: T1057, plan_name: "Process Discovery"}
+  - {dataset: apt29_day1_host, step: "8.B", technique: T1027.002, plan_name: "Software Packing"}
+  - {dataset: apt29_day1_host, step: "8.C", technique: T1021.002, plan_name: "Windows Admin Shares"}
+  - {dataset: apt29_day1_host, step: "8.C", technique: T1569.002, plan_name: "Service Execution"}
+  - {dataset: apt29_day1_host, step: "8.C", technique: T1078, plan_name: "Valid Accounts"}
+  - {dataset: apt29_day1_host, step: "9.A", technique: T1105, plan_name: "Remote File Copy"}
+  - {dataset: apt29_day1_host, step: "9.B", technique: T1059.001, plan_name: "PowerShell"}
+  - {dataset: apt29_day1_host, step: "9.B", technique: T1083, plan_name: "File and Directory Discovery"}
+  - {dataset: apt29_day1_host, step: "9.B", technique: T1119, plan_name: "Automated Collection"}
+  - {dataset: apt29_day1_host, step: "9.B", technique: T1005, plan_name: "Data from Local System"}
+  - {dataset: apt29_day1_host, step: "9.B", technique: T1560, plan_name: "Data Encrypted / Data Compressed"}
+  - {dataset: apt29_day1_host, step: "9.B", technique: T1074, plan_name: "Data Staged"}
+  - {dataset: apt29_day1_host, step: "9.B", technique: T1041, plan_name: "Exfiltration Over Command and Control Channel"}
+  - {dataset: apt29_day1_host, step: "9.C", technique: T1070.004, plan_name: "File Deletion"}
+  - {dataset: apt29_day1_host, step: "10.A", technique: T1569.002, plan_name: "Service Execution"}
+  - {dataset: apt29_day1_host, step: "10.A", technique: T1547.001, plan_name: "Registry Run Keys / Startup Folder"}
+  - {dataset: apt29_day1_host, step: "10.B", technique: T1547.001, plan_name: "Registry Run Keys / Startup Folder"}
+  - {dataset: apt29_day2_host, step: "11.A", technique: T1204, plan_name: "User Execution"}
+  - {dataset: apt29_day2_host, step: "11.A", technique: T1564.004, plan_name: "NTFS File Attributes"}
+  - {dataset: apt29_day2_host, step: "11.A", technique: T1497, plan_name: "Virtualization/Sandbox Evasion"}
+  - {dataset: apt29_day2_host, step: "11.A", technique: T1082, plan_name: "System Information Discovery"}
+  - {dataset: apt29_day2_host, step: "11.A", technique: T1120, plan_name: "Peripheral Device Discovery"}
+  - {dataset: apt29_day2_host, step: "11.A", technique: T1033, plan_name: "System Owner/User Discovery"}
+  - {dataset: apt29_day2_host, step: "11.A", technique: T1016, plan_name: "System Network Configuration Discovery"}
+  - {dataset: apt29_day2_host, step: "11.A", technique: T1057, plan_name: "Process Discovery"}
+  - {dataset: apt29_day2_host, step: "11.A", technique: T1083, plan_name: "File and Directory Discovery"}
+  - {dataset: apt29_day2_host, step: "11.A", technique: T1547.001, plan_name: "Registry Run Keys / Startup Folder"}
+  - {dataset: apt29_day2_host, step: "11.A", technique: T1140, plan_name: "Deobfuscate/Decode Files or Information"}
+  - {dataset: apt29_day2_host, step: "11.A", technique: T1059.001, plan_name: "PowerShell"}
+  - {dataset: apt29_day2_host, step: "11.A", technique: T1071, plan_name: "Standard Application Layer Protocol"}
+  - {dataset: apt29_day2_host, step: "12.A", technique: T1070.006, plan_name: "Timestomp"}
+  - {dataset: apt29_day2_host, step: "12.A", technique: T1083, plan_name: "File and Directory Discovery"}
+  - {dataset: apt29_day2_host, step: "12.B", technique: T1518.001, plan_name: "Security Software Discovery"}
+  - {dataset: apt29_day2_host, step: "12.C", technique: T1012, plan_name: "Query Registry"}
+  - {dataset: apt29_day2_host, step: "13.A", technique: T1082, plan_name: "System Information Discovery"}
+  - {dataset: apt29_day2_host, step: "13.B", technique: T1518.001, plan_name: "Security Software Discovery"}
+  - {dataset: apt29_day2_host, step: "13.C", technique: T1033, plan_name: "System Owner/User Discovery"}
+  - {dataset: apt29_day2_host, step: "13.D", technique: T1057, plan_name: "Process Discovery"}
+  - {dataset: apt29_day2_host, step: "14.A", technique: T1546.015, plan_name: "Component Object Model Hijacking"}
+  - {dataset: apt29_day2_host, step: "14.A", technique: T1548.002, plan_name: "Bypass User Account Control"}
+  - {dataset: apt29_day2_host, step: "14.B", technique: T1047, plan_name: "Windows Management Instrumentation"}
+  - {dataset: apt29_day2_host, step: "14.B", technique: T1105, plan_name: "Remote File Copy"}
+  - {dataset: apt29_day2_host, step: "14.B", technique: T1003, plan_name: "Credential Dumping"}
+  - {dataset: apt29_day2_host, step: "14.B", technique: T1027, plan_name: "Obfuscated Files or Information"}
+  - {dataset: apt29_day2_host, step: "14.B", technique: T1057, plan_name: "Process Discovery"}
+  - {dataset: apt29_day2_host, step: "14.B", technique: T1140, plan_name: "Deobfuscate/Decode Files or Information"}
+  - {dataset: apt29_day2_host, step: "15.A", technique: T1546.003, plan_name: "Windows Management Instrumentation Event Subscription"}
+  - {dataset: apt29_day2_host, step: "15.A", technique: T1033, plan_name: "System Owner/User Discovery"}
+  - {dataset: apt29_day2_host, step: "16.A", technique: T1018, plan_name: "Remote System Discovery"}
+  - {dataset: apt29_day2_host, step: "16.B", technique: T1033, plan_name: "System Owner/User Discovery"}
+  - {dataset: apt29_day2_host, step: "16.B", technique: T1106, plan_name: "Execution through API"}
+  - {dataset: apt29_day2_host, step: "16.C", technique: T1078, plan_name: "Valid Accounts"}
+  - {dataset: apt29_day2_host, step: "16.C", technique: T1021.006, plan_name: "Windows Remote Management"}
+  - {dataset: apt29_day2_host, step: "16.D", technique: T1105, plan_name: "Remote File Copy"}
+  - {dataset: apt29_day2_host, step: "16.D", technique: T1003, plan_name: "Credential Dumping"}
+  - {dataset: apt29_day2_host, step: "17.A", technique: T1114, plan_name: "Email Collection"}
+  - {dataset: apt29_day2_host, step: "17.B", technique: T1005, plan_name: "Data from Local System"}
+  - {dataset: apt29_day2_host, step: "17.B", technique: T1074, plan_name: "Data Staged"}
+  - {dataset: apt29_day2_host, step: "17.C", technique: T1560, plan_name: "Data Compressed"}
+  - {dataset: apt29_day2_host, step: "17.C", technique: T1027, plan_name: "Obfuscated Files or Information"}
+  - {dataset: apt29_day2_host, step: "18.A", technique: T1102, plan_name: "Web Service"}
+  - {dataset: apt29_day2_host, step: "18.A", technique: T1048, plan_name: "Exfiltration Over Alternative Protocol"}
+  - {dataset: apt29_day2_host, step: "19.A", technique: T1070.004, plan_name: "File Deletion"}
+  - {dataset: apt29_day2_host, step: "19.A", technique: T1055, plan_name: "Process Injection"}
+  - {dataset: apt29_day2_host, step: "19.B", technique: T1070.004, plan_name: "File Deletion"}
+  - {dataset: apt29_day2_host, step: "19.B", technique: T1055, plan_name: "Process Injection"}
+  - {dataset: apt29_day2_host, step: "19.C", technique: T1070.004, plan_name: "File Deletion"}
+  - {dataset: apt29_day2_host, step: "19.C", technique: T1055, plan_name: "Process Injection"}
+  - {dataset: apt29_day2_host, step: "20.A", technique: T1218.011, plan_name: "Rundll32"}
+  - {dataset: apt29_day2_host, step: "20.A", technique: T1546.003, plan_name: "Windows Management Instrumentation Event Subscription"}
+  - {dataset: apt29_day2_host, step: "20.A", technique: T1059.001, plan_name: "PowerShell"}
+  - {dataset: apt29_day2_host, step: "20.B", technique: T1550.003, plan_name: "Pass the Ticket"}
+  - {dataset: apt29_day2_host, step: "20.B", technique: T1021.006, plan_name: "Windows Remote Management"}
+  - {dataset: apt29_day2_host, step: "20.B", technique: T1136, plan_name: "Create Account"}

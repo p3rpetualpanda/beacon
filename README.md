@@ -84,6 +84,26 @@ of each recording, and R16's is a Windows diagnostics collector, so both score 0
 Rules at zero have no matching behaviour in the data yet; their test events show they work.
 See [docs/decisions.md](docs/decisions.md).
 
+## Steps detected
+
+Precision says how many alerts were right. Recall says how many documented attack steps a rule
+found. [`detections/ground_truth.yml`](detections/ground_truth.yml) lists the steps of OTRF's
+APT29 emulation plan, one row per step and technique. A row counts as detected when a rule for
+the same technique, its parent or a sub-technique alerted in that dataset and no analyst marked
+the alert a false positive. `make detect` prints it:
+
+| Dataset | Ground-truth rows | Detected | Recall |
+| --- | --- | --- | --- |
+| apt29_day1_host | 62 | 5 | 8% |
+| apt29_day2_host | 57 | 5 | 9% |
+
+This is technique level only. The plan has no timestamps, so a detected row means "a rule for
+that technique fired somewhere in the recording", not "it fired at that step". Real recall is
+no higher than this and may be lower. The 12 rules cover few of the 55 techniques in the plan
+(3 have any detection); the misses are the to-do list for Phase 3.
+`beacon coverage --layer PATH` writes the same scores as an ATT&CK Navigator layer
+([`docs/apt29-layer.json`](docs/apt29-layer.json)).
+
 ## Dashboard
 
 `make dashboard` starts a Streamlit app on your machine only (localhost:8501). It installs the

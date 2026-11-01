@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import sys
 from collections.abc import Sequence
 from datetime import UTC, tzinfo
@@ -16,6 +17,7 @@ import yaml
 from beacon import __version__, db
 from beacon import detect as detect_mod
 from beacon import export as export_mod
+from beacon import groundtruth as gt_mod
 from beacon import load as load_mod
 from beacon.ingest import fetch as fetch_mod
 
@@ -53,6 +55,11 @@ def build_parser() -> argparse.ArgumentParser:
     detect.add_argument("--rules-dir", type=Path, default=detect_mod.DEFAULT_RULES_DIR)
     detect.add_argument("--only", nargs="+", metavar="ID", help="run only these rules, e.g. R03")
     detect.add_argument("--verdicts", type=Path, default=detect_mod.DEFAULT_VERDICTS)
+    detect.add_argument("--ground-truth", type=Path, default=gt_mod.DEFAULT_GROUND_TRUTH)
+
+    coverage = commands.add_parser("coverage", help="write an ATT&CK Navigator layer of recall")
+    coverage.add_argument("--db", type=Path, default=db.DEFAULT_DB)
+    coverage.add_argument("--layer", type=Path, required=True)
 
     export = commands.add_parser("export-verdicts", help="save analyst verdicts to a CSV file")
     export.add_argument("--db", type=Path, default=db.DEFAULT_DB)
@@ -81,7 +88,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "load":
         return _load(args.db, args.manifest, args.raw_dir, args.interim_dir, args.only)
     if args.command == "detect":
-        return _detect(args.db, args.rules_dir, args.only, args.verdicts)
+        return _detect(args.db, args.rules_dir, args.only, args.verdicts, args.ground_truth)
+    if args.command == "coverage":
+        return _coverage(args.db, args.layer)
     if args.command == "export-verdicts":
         return _export_verdicts(args.db, args.out)
     if args.command == "export-alerts":
@@ -159,7 +168,13 @@ def _load(
     return 0
 
 
-def _detect(db_path: Path, rules_dir: Path, only: list[str] | None, verdicts: Path) -> int:
+def _detect(
+    db_path: Path,
+    rules_dir: Path,
+    only: list[str] | None,
+    verdicts: Path,
+    ground_truth: Path,
+) -> int:
     try:
         rules = detect_mod.load_rules(rules_dir)
     # ValueError covers RuleError and unreadable text; YAMLError a malformed rule.yml.
@@ -197,11 +212,39 @@ def _detect(db_path: Path, rules_dir: Path, only: list[str] | None, verdicts: Pa
             "WHERE rule_id IN (SELECT unnest($ids))",
             {"ids": [r.rule_id for r in rules if not only or r.rule_id in only]},
         ).fetchall()
+        recall = []
+        if ground_truth.exists():
+            try:
+                gt_mod.store(con, gt_mod.load_ground_truth(ground_truth))
+            except (ValueError, OSError, yaml.YAMLError) as exc:
+                print(f"cannot load ground truth: {exc}", file=sys.stderr)
+                return 2
+            recall = gt_mod.recall_by_dataset(con)
     finally:
         con.close()
     for rule_id, name, hits, precision in rows:
         shown = "-" if precision is None else f"{precision:.0%}"
         print(f"{rule_id}  {name:<40} {hits:>5} alerts  precision {shown}")
+    for dataset, hit, total in recall:
+        print(f"{dataset:<20} recall {hit}/{total} ground-truth rows ({hit / total:.0%})")
+    return 0
+
+
+def _coverage(db_path: Path, layer: Path) -> int:
+    if not db_path.exists():
+        print(f"no database at {db_path}", file=sys.stderr)
+        return 2
+    con = db.connect(db_path)
+    try:
+        doc = gt_mod.navigator_layer(con)
+    finally:
+        con.close()
+    if not doc["techniques"]:
+        print(f"no ground truth in {db_path} (run `make detect` first?)", file=sys.stderr)
+        return 2
+    text = json.dumps(doc, indent=2, sort_keys=True) + "\n"
+    layer.write_text(text, encoding="utf-8", newline="\n")
+    print(f"wrote {len(doc['techniques'])} techniques to {layer}")
     return 0
 
 
