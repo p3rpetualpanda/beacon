@@ -98,6 +98,16 @@ runs. It is meant for one analyst at a time. Saving a verdict briefly needs the 
 another program has it open. Stop the dashboard before `make load` or `make detect`, which
 need to write.
 
+## Exporting findings
+
+`make export` (or `beacon export-alerts [--out PATH] [--only R01 R05]`) writes every alert as an
+[OCSF](https://schema.ocsf.io) Detection Finding, one JSON object per line, to
+`exports/findings.jsonl`. The format is defined by
+[contracts/detection-finding-v1.schema.json](contracts/detection-finding-v1.schema.json), and the
+tests check every rule's alerts against it. The file is byte-identical when the database has not
+changed. On the full database it holds 544 findings (2.4 MB), all valid, with at most 10 evidence
+events each. ThreatLens ingests this file.
+
 ## Roadmap
 
 | Phase | Scope | Status |

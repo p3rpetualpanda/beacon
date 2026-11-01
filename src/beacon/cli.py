@@ -10,16 +10,19 @@ from datetime import UTC, tzinfo
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+import duckdb
 import yaml
 
 from beacon import __version__, db
 from beacon import detect as detect_mod
+from beacon import export as export_mod
 from beacon import load as load_mod
 from beacon.ingest import fetch as fetch_mod
 
 DEFAULT_MANIFEST = Path("data/manifest.yml")
 DEFAULT_RAW_DIR = Path("data/raw")
 DEFAULT_INTERIM_DIR = Path("data/interim")
+DEFAULT_FINDINGS = Path("exports/findings.jsonl")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -55,6 +58,13 @@ def build_parser() -> argparse.ArgumentParser:
     export.add_argument("--db", type=Path, default=db.DEFAULT_DB)
     export.add_argument("--out", type=Path, default=detect_mod.DEFAULT_VERDICTS)
 
+    findings = commands.add_parser(
+        "export-alerts", help="write alerts as contract v1 findings (JSON Lines)"
+    )
+    findings.add_argument("--db", type=Path, default=db.DEFAULT_DB)
+    findings.add_argument("--out", type=Path, default=DEFAULT_FINDINGS)
+    findings.add_argument("--only", nargs="+", metavar="ID", help="export only these rules")
+
     auth = commands.add_parser("load-auth-log", help="load SSH events from a Linux auth.log")
     auth.add_argument("file", type=Path)
     auth.add_argument("--db", type=Path, default=db.DEFAULT_DB)
@@ -74,6 +84,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _detect(args.db, args.rules_dir, args.only, args.verdicts)
     if args.command == "export-verdicts":
         return _export_verdicts(args.db, args.out)
+    if args.command == "export-alerts":
+        return _export_alerts(args.db, args.out, args.only)
     if args.command == "load-auth-log":
         return _load_auth_log(args.file, args.db, args.dataset, args.year, args.tz)
     if args.data_command == "fetch":
@@ -203,6 +215,35 @@ def _export_verdicts(db_path: Path, out: Path) -> int:
     finally:
         con.close()
     print(f"{count} verdicts in {out}")
+    return 0
+
+
+def _export_alerts(db_path: Path, out: Path, only: list[str] | None) -> int:
+    if not db_path.exists():  # db.connect would create an empty database here
+        print(f"cannot export findings: {db_path} not found", file=sys.stderr)
+        return 2
+    try:
+        con = db.connect(db_path)
+    except duckdb.Error as exc:
+        print(f"cannot export findings: {exc}", file=sys.stderr)
+        return 2
+    try:
+        known = {row[0] for row in con.execute("SELECT rule_id FROM rules").fetchall()}
+        unknown = set(only or ()) - known
+        if unknown:
+            print(f"unknown rule(s): {', '.join(sorted(unknown))}", file=sys.stderr)
+            return 2
+        items = export_mod.findings(con, only)
+        if not items and not only:
+            # An empty file would silently replace a real export and ThreatLens would ingest it.
+            raise export_mod.ExportError(f"no alerts in {db_path} (run `make detect` first?)")
+        count = export_mod.write_jsonl(items, out)
+    except (export_mod.ExportError, OSError, duckdb.Error) as exc:
+        print(f"cannot export findings: {exc}", file=sys.stderr)
+        return 2
+    finally:
+        con.close()
+    print(f"{count} findings in {out}")
     return 0
 
 
