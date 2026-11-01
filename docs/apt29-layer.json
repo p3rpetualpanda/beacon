@@ -72,8 +72,8 @@
       "techniqueID": "T1041"
     },
     {
-      "comment": "0 of 1 ground-truth rows detected",
-      "score": 0,
+      "comment": "1 of 1 ground-truth rows detected",
+      "score": 100,
       "techniqueID": "T1047"
     },
     {
@@ -272,8 +272,8 @@
       "techniqueID": "T1564.004"
     },
     {
-      "comment": "0 of 2 ground-truth rows detected",
-      "score": 0,
+      "comment": "2 of 2 ground-truth rows detected",
+      "score": 100,
       "techniqueID": "T1569.002"
     },
     {
